@@ -19,4 +19,15 @@ router.post("/", async (req, res) => {
   }
 });
 
+// ✅ GET /api/memos
+router.get("/", async (req, res) => {
+  try {
+    const memos = await Memo.find().sort({ createdAt: -1 });
+    res.json({ memos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "メモの取得に失敗しました" });
+  }
+});
+
 module.exports = router;
