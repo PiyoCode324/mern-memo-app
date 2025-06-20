@@ -33,12 +33,12 @@ router.get("/", async (req, res) => {
 // PATCH /api/memos/:id
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, content } = req.body;
+  const { title, content, isDone } = req.body;
 
   try {
     const updatedMemo = await Memo.findByIdAndUpdate(
       id,
-      { title, content },
+      { title, content, isDone },
       { new: true }
     );
 
