@@ -1,198 +1,352 @@
+// client/src/components/MemoList.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+// api.jsから全てのAPI関数をインポート
+import { fetchMemos, createMemo, updateMemo, deleteMemo } from "../api";
 
 const MemoList = () => {
-  // A state that manages a list of notes
+  const navigate = useNavigate();
   const [memos, setMemos] = useState([]);
-  // Manage the ID of the memo being edited
-  const [editingMemoId, setEditingMemoId] = useState(null);
-  // Manage titles being edited
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
   const [editedTitle, setEditedTitle] = useState("");
-  // Manage your edits
   const [editedContent, setEditedContent] = useState("");
-  // Manage search keywords
-  const [searchTerm, setSearchTerm] = useState("");
+  const [editingMemoId, setEditingMemoId] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Retrieve the notes from the API when the component first renders
+  const token = localStorage.getItem("token");
+
+  // メモ一覧取得
   useEffect(() => {
-    fetch("/api/memos")
-      .then((res) => res.json())
-      .then((data) => setMemos(data.memos))
-      .catch((err) => console.error("Failed to fetch memos:", err));
-  }, []);
+    // トークンがない場合はログインページへリダイレクト
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
-  // Process triggered by pressing the edit button.
-  // Set the memo information to be edited to the state
-  const handleEditClick = (memo) => {
+    setLoading(true);
+    setError(null);
+
+    const getMemos = async () => {
+      try {
+        // api.jsからインポートしたfetchMemos関数を使用
+        const response = await fetchMemos(token);
+
+        // 認証エラーの場合、トークンをクリアしてログインページへリダイレクト
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("token");
+          navigate("/login");
+          throw new Error("認証エラー: 再度ログインしてください。");
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json(); // レスポンスボディをJSONとしてパース
+        setMemos(data.memos);
+      } catch (err) {
+        console.error("メモ取得エラー:", err);
+        setError(err.message || "メモの取得に失敗しました。");
+        setMemos([]); // エラー時は空の配列にしてmapエラーを防ぐ
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getMemos(); // useEffect内で定義したasync関数を実行
+  }, [token, navigate]); // tokenとnavigateを依存配列に追加
+
+  // 新規メモ作成
+  const handleCreate = async () => {
+    if (!token) {
+      setError("ログインが必要です。");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      // api.jsからインポートしたcreateMemo関数を使用
+      const response = await createMemo(token, {
+        title: newTitle,
+        content: newContent,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "メモ作成に失敗しました。");
+      }
+
+      const createdMemo = await response.json();
+      setMemos([...memos, createdMemo]);
+      setNewTitle("");
+      setNewContent("");
+    } catch (err) {
+      console.error("メモ作成エラー:", err);
+      setError(err.message || "メモ作成エラーが発生しました。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // メモ削除
+  const handleDelete = async (id) => {
+    if (!token) {
+      setError("ログインが必要です。");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      // api.jsからインポートしたdeleteMemo関数を使用
+      const response = await deleteMemo(token, id);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "メモ削除に失敗しました。");
+      }
+
+      setMemos(memos.filter((memo) => memo._id !== id));
+    } catch (err) {
+      console.error("削除エラー:", err);
+      setError(err.message || "メモ削除エラーが発生しました。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 編集モードへ
+  const startEditing = (memo) => {
     setEditingMemoId(memo._id);
     setEditedTitle(memo.title);
     setEditedContent(memo.content);
   };
 
-  // Note update process
-  // Send a PATCH request to the API and update the state if successful.
+  // メモ更新
   const handleUpdate = async (id) => {
+    if (!token) {
+      setError("ログインが必要です。");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
     try {
-      const res = await fetch(`/api/memos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editedTitle, content: editedContent }),
+      // api.jsからインポートしたupdateMemo関数を使用
+      const response = await updateMemo(token, id, {
+        title: editedTitle,
+        content: editedContent,
       });
-      if (!res.ok) throw new Error("Failed to update memo");
-      const updatedMemo = await res.json();
-      setMemos((prev) =>
-        prev.map((memo) => (memo._id === id ? updatedMemo : memo))
-      );
-      // Cancels the editing state and clears the edited contents.
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "メモ更新に失敗しました。");
+      }
+
+      const updatedMemo = await response.json();
+      setMemos(memos.map((memo) => (memo._id === id ? updatedMemo : memo)));
       setEditingMemoId(null);
-      setEditedTitle("");
-      setEditedContent("");
-    } catch (error) {
-      console.error("Update failed:", error);
+    } catch (err) {
+      console.error("更新エラー:", err);
+      setError(err.message || "メモ更新エラーが発生しました。");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Note deletion process
-  // Send a DELETE request to the API after confirming with the user
-  // If successful, delete the relevant note from the state.
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this memo?")) return;
-    try {
-      const res = await fetch(`/api/memos/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete memo");
-      setMemos((prev) => prev.filter((memo) => memo._id !== id));
-    } catch (error) {
-      console.error("Delete failed:", error);
+  // 完了状態トグル
+  const handleToggleDone = async (memo) => {
+    if (!token) {
+      setError("ログインが必要です。");
+      return;
     }
-  };
+    setLoading(true);
+    setError(null);
 
-  // Switching between note completion states
-  // Flip the current state and send a PATCH request to the API
-  // If successful, update the state
-  const handleToggleDone = async (id, currentStatus) => {
     try {
-      const res = await fetch(`/api/memos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isDone: !currentStatus }),
+      // api.jsからインポートしたupdateMemo関数を再利用
+      const response = await updateMemo(token, memo._id, {
+        title: memo.title,
+        content: memo.content,
+        isDone: !memo.isDone,
       });
-      if (!res.ok) throw new Error("Failed to toggle status");
-      const updatedMemo = await res.json();
-      setMemos((prev) =>
-        prev.map((memo) => (memo._id === id ? updatedMemo : memo))
-      );
-    } catch (error) {
-      console.error("Toggle failed:", error);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "完了状態の切り替えに失敗しました。"
+        );
+      }
+
+      const updatedMemo = await response.json();
+      setMemos(memos.map((m) => (m._id === memo._id ? updatedMemo : m)));
+    } catch (err) {
+      console.error("完了状態の切り替えエラー:", err);
+      setError(err.message || "完了状態の切り替えエラーが発生しました。");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filter notes based on search keywords
-  const filteredMemos = memos.filter(
-    (memo) =>
-      memo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      memo.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ログアウト処理
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("email");
+    navigate("/login"); // ログインページへリダイレクト
+  };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 font-sans">
-      <h1 className="text-5xl font-bold text-center text-gray-900 mb-10">
-        📝 Your Memos
-      </h1>
-      {/* Search box*/}
-      <input
-        type="text"
-        placeholder="Search by title or content..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full mb-6 p-3 border border-gray-300 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-600 transition"
-      />
-      <div className="space-y-6">
-        {/* Rendering the list of notes with a map*/}
-        {filteredMemos.map((memo) => (
+    <div className="container mx-auto p-4 md:p-8 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-extrabold text-gray-800 text-center flex-grow">
+          📝 メモ一覧
+        </h2>
+        {token && ( // ログイン時にのみログアウトボタンを表示
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
+          >
+            ログアウト
+          </button>
+        )}
+      </div>
+
+      {loading && (
+        <p className="text-blue-600 text-center mb-4">読み込み中...</p>
+      )}
+      {error && (
+        <p className="text-red-500 text-center mb-4 font-medium">
+          エラー: {error}
+        </p>
+      )}
+      {!token && (
+        <p className="text-blue-700 text-center mb-4">
+          メモを見るにはログインしてください。
+        </p>
+      )}
+
+      {/* 新規作成フォーム */}
+      <div className="bg-white p-6 rounded-xl shadow-lg mb-8">
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">
+          📌 新しいメモを作成
+        </h3>
+        <input
+          type="text"
+          placeholder="タイトル"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-3"
+          disabled={!token || loading}
+        />
+        <textarea
+          placeholder="内容"
+          value={newContent}
+          onChange={(e) => setNewContent(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 h-32 resize-y"
+          disabled={!token || loading}
+        />
+        <button
+          onClick={handleCreate}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!token || loading}
+        >
+          作成
+        </button>
+      </div>
+
+      {memos.length === 0 && !loading && !error && token && (
+        <p className="text-gray-600 text-center text-lg mt-8">
+          メモがありません。新しいメモを作成しましょう！
+        </p>
+      )}
+
+      {/* メモ表示エリア */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {memos.map((memo) => (
           <div
             key={memo._id}
-            className="bg-white border border-gray-200 shadow-sm rounded-lg p-7 hover:shadow-lg transition"
+            className="bg-white p-6 rounded-xl shadow-lg border border-gray-200"
           >
-            <div className="flex items-start gap-4">
-              {/* Completed state checkbox */}
-              <input
-                type="checkbox"
-                checked={memo.isDone || false}
-                onChange={() => handleToggleDone(memo._id, memo.isDone)}
-                className="mt-1 w-5 h-5 accent-indigo-500"
-              />
-              <div className="flex-1">
-                {/* If editing, display input form */}
-                {editingMemoId === memo._id ? (
-                  <>
-                    <input
-                      type="text"
-                      value={editedTitle}
-                      onChange={(e) => setEditedTitle(e.target.value)}
-                      className="w-full mb-2 p-2 border border-gray-400 rounded-md"
-                    />
-                    <textarea
-                      value={editedContent}
-                      onChange={(e) => setEditedContent(e.target.value)}
-                      className="w-full p-2 border border-gray-400 rounded-md"
-                    />
-                    {/* Save/Cancel button*/}
-                    <div className="mt-4 flex gap-3">
-                      <button
-                        onClick={() => handleUpdate(memo._id)}
-                        className="font-semibold bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-md transition"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingMemoId(null)}
-                        className="font-semibold bg-gray-400 hover:bg-gray-500 text-gray-800 px-5 py-2.5 rounded-md transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* If not edited, the title and content are displayed. */}
-                    <h3
-                      className={`text-2xl font-semibold ${
-                        memo.isDone
-                          ? "line-through text-gray-500"
-                          : "text-gray-800"
-                      }`}
-                    >
-                      {memo.title}
-                    </h3>
-                    <p
-                      className={`mt-1 text-gray-700 ${
-                        memo.isDone ? "line-through text-gray-500" : ""
-                      }`}
-                    >
-                      {memo.content}
-                    </p>
-                    {/* Edit/Delete button */}
-                    <div className="mt-4 flex gap-3">
-                      <button
-                        onClick={() => handleEditClick(memo)}
-                        className="font-semibold bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-md transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(memo._id)}
-                        className="font-semibold bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-md transition"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </>
-                )}
+            {editingMemoId === memo._id ? (
+              <div>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 mb-3"
+                  disabled={loading}
+                />
+                <textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4 h-24 resize-y"
+                  disabled={loading}
+                />
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => handleUpdate(memo._id)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    保存
+                  </button>
+                  <button
+                    onClick={() => setEditingMemoId(null)}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    キャンセル
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <h3
+                  className={`text-xl font-bold text-gray-800 mb-2 ${
+                    memo.isDone ? "line-through text-gray-500" : ""
+                  }`}
+                >
+                  {memo.title}
+                </h3>
+                <p className="text-gray-700 mb-3 text-base leading-relaxed">
+                  {memo.content}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  完了: {memo.isDone ? "✅" : "❌"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => startEditing(memo)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDelete(memo._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    削除
+                  </button>
+                  <button
+                    onClick={() => handleToggleDone(memo)}
+                    className={`font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      memo.isDone
+                        ? "bg-yellow-500 hover:bg-yellow-600 text-gray-800"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                    disabled={loading}
+                  >
+                    {memo.isDone ? "未完了にする" : "完了にする"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
-      </div>{" "}
-      {/* Div that encloses the list of notes */}
+      </div>
     </div>
   );
 };
