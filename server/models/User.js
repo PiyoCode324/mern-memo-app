@@ -1,28 +1,28 @@
-// server/models/User.js
-
-const mongoose = require("mongoose"); // CommonJS形式に変更
-const bcrypt = require("bcrypt"); // CommonJS形式に変更
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 const UserSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true, // 重複登録防止
+    unique: true,
   },
   password: {
     type: String,
     required: true,
   },
+  resetToken: String, // パスワードリセット用トークン
+  resetTokenExpires: Date, // トークンの有効期限
 });
 
-// 保存前にパスワードをハッシュ化
+// パスワードを保存前にハッシュ化するMongooseのpreフック
 UserSchema.pre("save", async function (next) {
+  // パスワードが変更されていない場合は、ハッシュ化せずに次へ
   if (!this.isModified("password")) return next();
+  // パスワードをハッシュ化
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
 const User = mongoose.model("User", UserSchema);
-
-// CommonJS形式でエクスポート
-module.exports = User; // <-- ここを `export default User;` から変更
+module.exports = User;

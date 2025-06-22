@@ -71,3 +71,19 @@ export const deleteMemo = async (token, id) => {
   });
   return res;
 };
+
+export const passwordResetRequest = async (email) => {
+  return fetch(`${API_BASE_URL}/api/password-reset-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+};
+
+export const passwordReset = async (token, newPassword) => {
+  return fetch(`${API_BASE_URL}/api/password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+};

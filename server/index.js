@@ -1,8 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const path = require("path"); // pathモジュールをインポート
 const memoRoutes = require("./routes/memos");
-const authRoutes = require("./routes/auth"); // ← 認証ルートを追加
+const authRoutes = require("./routes/auth");
 require("dotenv").config();
 
 const app = express();
@@ -18,13 +19,20 @@ mongoose
 app.use(cors());
 app.use(express.json());
 
-// ルーティング
-app.use("/api/memos", memoRoutes);
-app.use("/api", authRoutes); // ← 追加された認証ルート
+// ルーティング (APIエンドポイント)
+app.use("/api/memos", memoRoutes); // メモ関連のAPIルート
+app.use("/api", authRoutes); // 認証関連のAPIルート
 
-// デフォルトのルート（任意）
-app.get("/", (req, res) => {
-  res.send("Hello from Memo App!");
+// Reactアプリケーションの静的ファイルをサーブ
+app.use(express.static(path.join(__dirname, "../client/build"))); // <-- コメントを外す
+
+// SPAのためのフォールバックルート:
+// /api で始まらないすべてのGETリクエストに対して、Reactアプリケーションのindex.htmlを返します。
+// これにより、React Routerがクライアント側でルーティングを処理できるようになります。
+// このルートは、他のAPIルート (app.use("/api", ...)) の後に配置することが重要です。
+app.get("*", (req, res) => {
+  // <-- コメントを外す
+  res.sendFile(path.join(__dirname, "../client/build", "index.html"));
 });
 
 // サーバー起動

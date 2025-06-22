@@ -76,6 +76,15 @@ const Login = () => {
           <a href="/signup" className="text-indigo-600 hover:underline">
             Sign Up
           </a>
+          <p className="text-sm text-center text-gray-600 mt-4">
+            パスワードを忘れましたか？{" "}
+            <a
+              href="/password-reset-request"
+              className="text-indigo-600 hover:underline"
+            >
+              パスワードをリセットする
+            </a>
+          </p>
         </p>
       </div>
     </div>
