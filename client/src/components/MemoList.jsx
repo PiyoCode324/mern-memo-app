@@ -1,8 +1,8 @@
 // client/src/components/MemoList.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-// api.jsから全てのAPI関数をインポート
 import { fetchMemos, createMemo, updateMemo, deleteMemo } from "../api";
+import { Toaster, toast } from "react-hot-toast";
 
 const MemoList = () => {
   const navigate = useNavigate();
@@ -14,12 +14,22 @@ const MemoList = () => {
   const [editingMemoId, setEditingMemoId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedMemoId, setSelectedMemoId] = useState(null);
+  const [sortOrder, setSortOrder] = useState("newest"); // 追加: 並び順
 
   const token = localStorage.getItem("token");
 
-  // メモ一覧取得
+  // 並び替え関数
+  const sortMemos = (memos, order) => {
+    return [...memos].sort((a, b) =>
+      order === "newest"
+        ? new Date(b.createdAt) - new Date(a.createdAt)
+        : new Date(a.createdAt) - new Date(b.createdAt)
+    );
+  };
+
   useEffect(() => {
-    // トークンがない場合はログインページへリダイレクト
     if (!token) {
       navigate("/login");
       return;
@@ -30,10 +40,8 @@ const MemoList = () => {
 
     const getMemos = async () => {
       try {
-        // api.jsからインポートしたfetchMemos関数を使用
         const response = await fetchMemos(token);
 
-        // 認証エラーの場合、トークンをクリアしてログインページへリダイレクト
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
           navigate("/login");
@@ -42,31 +50,37 @@ const MemoList = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json(); // レスポンスボディをJSONとしてパース
-        setMemos(data.memos);
+
+        const data = await response.json();
+        setMemos(sortMemos(data.memos, sortOrder));
       } catch (err) {
         console.error("メモ取得エラー:", err);
         setError(err.message || "メモの取得に失敗しました。");
-        setMemos([]); // エラー時は空の配列にしてmapエラーを防ぐ
+        setMemos([]);
       } finally {
         setLoading(false);
       }
     };
 
-    getMemos(); // useEffect内で定義したasync関数を実行
-  }, [token, navigate]); // tokenとnavigateを依存配列に追加
+    getMemos();
+  }, [token, navigate, sortOrder]);
 
-  // 新規メモ作成
   const handleCreate = async () => {
     if (!token) {
       setError("ログインが必要です。");
       return;
     }
+
+    // ✅ ここにバリデーションを追加！
+    if (!newTitle.trim() || !newContent.trim()) {
+      toast.error("タイトルと内容を入力してください。");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // api.jsからインポートしたcreateMemo関数を使用
       const response = await createMemo(token, {
         title: newTitle,
         content: newContent,
@@ -81,15 +95,33 @@ const MemoList = () => {
       setMemos([...memos, createdMemo]);
       setNewTitle("");
       setNewContent("");
+      toast.success("メモを作成しました！");
     } catch (err) {
       console.error("メモ作成エラー:", err);
       setError(err.message || "メモ作成エラーが発生しました。");
+      toast.error(err.message || "メモ作成エラーが発生しました。");
     } finally {
       setLoading(false);
     }
   };
 
-  // メモ削除
+  const confirmDelete = (id) => {
+    setSelectedMemoId(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!selectedMemoId) return;
+    await handleDelete(selectedMemoId);
+    setShowDeleteModal(false);
+    setSelectedMemoId(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setSelectedMemoId(null);
+  };
+
   const handleDelete = async (id) => {
     if (!token) {
       setError("ログインが必要です。");
@@ -99,7 +131,6 @@ const MemoList = () => {
     setError(null);
 
     try {
-      // api.jsからインポートしたdeleteMemo関数を使用
       const response = await deleteMemo(token, id);
 
       if (!response.ok) {
@@ -116,14 +147,12 @@ const MemoList = () => {
     }
   };
 
-  // 編集モードへ
   const startEditing = (memo) => {
     setEditingMemoId(memo._id);
     setEditedTitle(memo.title);
     setEditedContent(memo.content);
   };
 
-  // メモ更新
   const handleUpdate = async (id) => {
     if (!token) {
       setError("ログインが必要です。");
@@ -133,7 +162,6 @@ const MemoList = () => {
     setError(null);
 
     try {
-      // api.jsからインポートしたupdateMemo関数を使用
       const response = await updateMemo(token, id, {
         title: editedTitle,
         content: editedContent,
@@ -145,7 +173,10 @@ const MemoList = () => {
       }
 
       const updatedMemo = await response.json();
-      setMemos(memos.map((memo) => (memo._id === id ? updatedMemo : memo)));
+      const updatedMemos = memos.map((memo) =>
+        memo._id === id ? updatedMemo : memo
+      );
+      setMemos(sortMemos(updatedMemos, sortOrder));
       setEditingMemoId(null);
     } catch (err) {
       console.error("更新エラー:", err);
@@ -155,7 +186,6 @@ const MemoList = () => {
     }
   };
 
-  // 完了状態トグル
   const handleToggleDone = async (memo) => {
     if (!token) {
       setError("ログインが必要です。");
@@ -165,7 +195,6 @@ const MemoList = () => {
     setError(null);
 
     try {
-      // api.jsからインポートしたupdateMemo関数を再利用
       const response = await updateMemo(token, memo._id, {
         title: memo.title,
         content: memo.content,
@@ -180,7 +209,10 @@ const MemoList = () => {
       }
 
       const updatedMemo = await response.json();
-      setMemos(memos.map((m) => (m._id === memo._id ? updatedMemo : m)));
+      const updatedMemos = memos.map((m) =>
+        m._id === memo._id ? updatedMemo : m
+      );
+      setMemos(sortMemos(updatedMemos, sortOrder));
     } catch (err) {
       console.error("完了状態の切り替えエラー:", err);
       setError(err.message || "完了状態の切り替えエラーが発生しました。");
@@ -189,11 +221,10 @@ const MemoList = () => {
     }
   };
 
-  // ログアウト処理
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
-    navigate("/login"); // ログインページへリダイレクト
+    navigate("/login");
   };
 
   return (
@@ -202,16 +233,25 @@ const MemoList = () => {
         <h2 className="text-3xl font-extrabold text-gray-800 text-center flex-grow">
           📝 メモ一覧
         </h2>
-        {token && ( // ログイン時にのみログアウトボタンを表示
+        {token && (
           <button
             onClick={handleLogout}
             className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
           >
             ログアウト
           </button>
-
-          
         )}
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+        >
+          <option value="newest">新しい順</option>
+          <option value="oldest">古い順</option>
+        </select>
       </div>
 
       {loading && (
@@ -222,13 +262,8 @@ const MemoList = () => {
           エラー: {error}
         </p>
       )}
-      {!token && (
-        <p className="text-blue-700 text-center mb-4">
-          メモを見るにはログインしてください。
-        </p>
-      )}
 
-      {/* 新規作成フォーム */}
+      {/* 作成フォーム */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8">
         <h3 className="text-xl font-semibold text-gray-700 mb-4">
           📌 新しいメモを作成
@@ -238,19 +273,19 @@ const MemoList = () => {
           placeholder="タイトル"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-3"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-3"
           disabled={!token || loading}
         />
         <textarea
           placeholder="内容"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4 h-32 resize-y"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4 h-32 resize-y"
           disabled={!token || loading}
         />
         <button
           onClick={handleCreate}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
           disabled={!token || loading}
         >
           作成
@@ -263,7 +298,7 @@ const MemoList = () => {
         </p>
       )}
 
-      {/* メモ表示エリア */}
+      {/* メモカード */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {memos.map((memo) => (
           <div
@@ -273,30 +308,26 @@ const MemoList = () => {
             {editingMemoId === memo._id ? (
               <div>
                 <input
-                  type="text"
                   value={editedTitle}
                   onChange={(e) => setEditedTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 mb-3"
-                  disabled={loading}
+                  className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-md"
                 />
                 <textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4 h-24 resize-y"
-                  disabled={loading}
+                  className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-md h-24 resize-y"
                 />
-                <div className="flex space-x-3">
+                <div className="flex gap-3">
                   <button
                     onClick={() => handleUpdate(memo._id)}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg"
                     disabled={loading}
                   >
                     保存
                   </button>
                   <button
                     onClick={() => setEditingMemoId(null)}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={loading}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg"
                   >
                     キャンセル
                   </button>
@@ -305,41 +336,39 @@ const MemoList = () => {
             ) : (
               <div>
                 <h3
-                  className={`text-xl font-bold text-gray-800 mb-2 ${
+                  className={`text-xl font-bold mb-2 ${
                     memo.isDone ? "line-through text-gray-500" : ""
                   }`}
                 >
                   {memo.title}
                 </h3>
-                <p className="text-gray-700 mb-3 text-base leading-relaxed">
-                  {memo.content}
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-gray-700 mb-3">{memo.content}</p>
+                <p className="text-sm text-gray-600 mb-1">
                   完了: {memo.isDone ? "✅" : "❌"}
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  作成日: {new Date(memo.createdAt).toLocaleString()}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => startEditing(memo)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={loading}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm"
                   >
                     編集
                   </button>
                   <button
-                    onClick={() => handleDelete(memo._id)}
-                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={loading}
+                    onClick={() => confirmDelete(memo._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm"
                   >
                     削除
                   </button>
                   <button
                     onClick={() => handleToggleDone(memo)}
-                    className={`font-bold py-2 px-3 rounded-lg text-sm transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`px-3 py-2 rounded-lg text-sm font-bold ${
                       memo.isDone
                         ? "bg-yellow-500 hover:bg-yellow-600 text-gray-800"
                         : "bg-green-500 hover:bg-green-600 text-white"
                     }`}
-                    disabled={loading}
                   >
                     {memo.isDone ? "未完了にする" : "完了にする"}
                   </button>
@@ -349,6 +378,35 @@ const MemoList = () => {
           </div>
         ))}
       </div>
+
+      {/* 削除モーダル */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-80 text-center">
+            <h2 className="text-lg font-bold mb-4 text-gray-800">
+              本当に削除しますか？
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              この操作は元に戻せません。
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={handleDeleteConfirmed}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                削除する
+              </button>
+              <button
+                onClick={handleCancelDelete}
+                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <Toaster position="top-center" />
     </div>
   );
 };
