@@ -19,15 +19,25 @@ const MemoList = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMemoId, setSelectedMemoId] = useState(null);
   const [sortOrder, setSortOrder] = useState("newest");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const token = localStorage.getItem("token");
 
   // 並び替え関数
   const sortMemos = (memos, order) => {
-    return [...memos].sort((a, b) =>
-      order === "newest"
-        ? new Date(b.createdAt) - new Date(a.createdAt)
-        : new Date(a.createdAt) - new Date(b.createdAt)
+    // 元の配列を破壊しないようにコピー
+    return (
+      [...memos]
+        // まず作成日時で並び替え
+        .sort((a, b) =>
+          order === "newest"
+            ? // 新しい順（降順）
+              new Date(b.createdAt) - new Date(a.createdAt)
+            : // 古い順（昇順）
+              new Date(a.createdAt) - new Date(b.createdAt)
+        )
+        // 次にピン留めされたメモを上に持ってくる並び替え
+        .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
     );
   };
 
@@ -226,6 +236,48 @@ const MemoList = () => {
     navigate("/login");
   };
 
+  const filteredMemos = memos.filter(
+    (memo) =>
+      memo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      memo.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleTogglePin = async (memo) => {
+    if (!token) {
+      toast.error("ログインが必要です。");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await updateMemo(token, memo._id, {
+        isPinned: !memo.isPinned,
+      });
+      if (!response.ok) {
+        throw new Error("ピン状態の更新に失敗しました。");
+      }
+      const updatedMemo = await response.json();
+
+      // memos配列の更新 + ピンが上に来るソート
+      const updatedMemos = memos.map((m) =>
+        m._id === updatedMemo._id ? updatedMemo : m
+      );
+
+      // ピン留めが上にくるソート処理（ピンの有無で優先し、あとは作成日時などでソート）
+      const sortedMemos = updatedMemos.sort((a, b) => {
+        if (a.isPinned === b.isPinned) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return a.isPinned ? -1 : 1; // isPinned true は上に
+      });
+
+      setMemos(sortedMemos);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-8 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -243,6 +295,16 @@ const MemoList = () => {
       </div>
 
       <MemoSortSelect sortOrder={sortOrder} setSortOrder={setSortOrder} />
+
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="タイトルまたは内容で検索"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
 
       {loading && (
         <p className="text-blue-600 text-center mb-4">読み込み中...</p>
@@ -264,7 +326,7 @@ const MemoList = () => {
 
       {/* メモカード */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {memos.map((memo) => (
+        {filteredMemos.map((memo) => (
           <MemoCard
             key={memo._id}
             memo={memo}
@@ -278,6 +340,7 @@ const MemoList = () => {
             handleUpdate={handleUpdate}
             confirmDelete={confirmDelete}
             handleToggleDone={handleToggleDone}
+            handleTogglePin={handleTogglePin} // ✅ 渡す
             loading={loading}
           />
         ))}

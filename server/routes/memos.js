@@ -1,15 +1,15 @@
 // server/routes/memos.js
 
 const express = require("express");
-const verifyToken = require("../middleware/verifyToken"); // JWT認証ミドルウェアをインポート
-const Memo = require("../models/Memo"); // Memoモデルをインポート
+const verifyToken = require("../middleware/verifyToken"); // Import the JWT authentication middleware
+const Memo = require("../models/Memo"); // Import Memo model
 
 const router = express.Router();
 
-// 🔍 すべてのメモを取得 (認証必須) - GET /api/memos
+// 🔍 Get all notes (requires authentication) - GET /api/memos
 router.get("/", verifyToken, async (req, res) => {
   try {
-    // ログイン中のユーザーIDに紐づくメモのみを取得
+    // Get only notes associated with the logged-in user ID
     const memos = await Memo.find({ userId: req.user.userId });
     res.json({ memos });
   } catch (err) {
@@ -20,11 +20,17 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// ✏️ 新しいメモを作成 (認証必須) - POST /api/memos
+// ✏️ Create a new note (requires authentication) - POST /api/memos
 router.post("/", verifyToken, async (req, res) => {
   try {
     const { title, content } = req.body;
-    // 新しいメモを作成し、認証されたユーザーIDを紐付ける
+
+    // Adding validation
+    if (!title || !content) {
+      return res.status(400).json({ message: "タイトルと内容は必須です。" });
+    }
+
+    // Create a new note and associate it with the authenticated user ID
     const newMemo = new Memo({
       userId: req.user.userId,
       title,
@@ -40,24 +46,35 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// 🛠️ 特定のメモを編集 (認証必須) - PUT /api/memos/:id
+// 🛠️ Edit a specific note (requires authentication) - PUT /api/memos/:id
 router.put("/:id", verifyToken, async (req, res) => {
   try {
-    const { title, content, isDone } = req.body;
-    // ユーザーIDとメモIDが一致するメモを検索し、更新
+    const { title, content, isDone, isPinned } = req.body; // ← Added isPinned!
+
     const updatedMemo = await Memo.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
-      { title, content, isDone },
-      { new: true } // 更新後のドキュメントを返す
+      { title, content, isDone, isPinned }, // ← Updated to include isPinned
+      { new: true }
     );
-    if (!updatedMemo) {
-      // メモが見つからない、またはユーザーに所有権がない場合
-      return res
-        .status(404)
-        .json({
-          message: "メモが見つかりません、または更新する権限がありません。",
-        });
+
+    // Adding validation
+    if (
+      title === undefined &&
+      content === undefined &&
+      isDone === undefined &&
+      isPinned === undefined
+    ) {
+      return res.status(400).json({
+        message: "更新内容が指定されていません。",
+      });
     }
+
+    if (!updatedMemo) {
+      return res.status(404).json({
+        message: "メモが見つかりません、または更新する権限がありません。",
+      });
+    }
+
     res.json(updatedMemo);
   } catch (err) {
     console.error("メモ更新エラー:", err);
@@ -67,21 +84,19 @@ router.put("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// 🗑️ 特定のメモを削除 (認証必須) - DELETE /api/memos/:id
+// 🗑️ Delete a specific note (requires authentication) - DELETE /api/memos/:id
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
-    // ユーザーIDとメモIDが一致するメモを検索し、削除
+    // Search for and delete notes with matching user ID and note ID
     const deletedMemo = await Memo.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.userId,
     });
     if (!deletedMemo) {
-      // メモが見つからない、またはユーザーに所有権がない場合
-      return res
-        .status(404)
-        .json({
-          message: "メモが見つかりません、または削除する権限がありません。",
-        });
+      // Notes are missing or the user does not own them
+      return res.status(404).json({
+        message: "メモが見つかりません、または削除する権限がありません。",
+      });
     }
     res.json({ message: "メモを削除しました。" });
   } catch (err) {

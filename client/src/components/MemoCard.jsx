@@ -15,6 +15,7 @@ const MemoCard = ({
   setEditingMemoId,
   confirmDelete,
   handleToggleDone,
+  handleTogglePin, // ✅ これを追加
 }) => {
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
@@ -91,6 +92,15 @@ const MemoCard = ({
               }`}
             >
               {memo.isDone ? "未完了にする" : "完了にする"}
+            </button>
+            {/* ピン留めボタン */}
+            <button
+              onClick={() => handleTogglePin(memo)}
+              className={`text-yellow-500 font-bold transition-opacity duration-200 ${
+                memo.isPinned ? "opacity-100" : "opacity-40 hover:opacity-70"
+              }`}
+            >
+              📌
             </button>
           </div>
         </div>
