@@ -2,6 +2,8 @@ node_modules/
 client/node_modules/
 server/node_modules/
 
+.env
+
 MEMO.md
 面談.md
 日誌.md
