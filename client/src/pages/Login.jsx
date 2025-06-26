@@ -1,7 +1,6 @@
-// client/src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../api"; // api.jsからlogin関数をインポート
+import { login } from "../api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,23 +15,17 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // api.jsからインポートしたlogin関数を使用
       const response = await login(email, password);
-      const data = await response.json(); // レスポンスボディをJSONとしてパース
+      const data = await response.json();
 
       if (response.ok) {
-        console.log("Login successful:", data);
-        localStorage.setItem("token", data.token); // ログイン成功時にトークンを保存
-        localStorage.setItem("email", data.email); // 必要であればユーザーのメールアドレスも保存
-        navigate("/"); // ログイン成功したらメモ一覧ページへ遷移
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("email", data.email);
+        navigate("/");
       } else {
-        // エラーレスポンスの場合
-        console.error("Login failed:", data);
         setError(data.message || "ログインに失敗しました。");
       }
     } catch (err) {
-      // ネットワークエラーなど
-      console.error("Network error during login:", err);
       setError("ネットワークエラーが発生しました。");
     } finally {
       setLoading(false);
@@ -40,8 +33,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 transition-colors duration-300">
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md transition-colors duration-300">
         <h2 className="text-2xl font-bold text-center text-indigo-600 mb-6">
           Log In
         </h2>
@@ -53,7 +46,9 @@ const Login = () => {
             value={email}
             required
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors duration-300"
           />
           <input
             type="password"
@@ -61,22 +56,27 @@ const Login = () => {
             value={password}
             required
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors duration-300"
           />
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-md 
+                       transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? "ログイン中..." : "Log In"}
           </button>
         </form>
-        <p className="text-sm text-center text-gray-600 mt-4">
-          Don't have an account?{" "}
-          <a href="/signup" className="text-indigo-600 hover:underline">
-            Sign Up
-          </a>
-          <p className="text-sm text-center text-gray-600 mt-4">
+        <div className="text-sm text-center text-gray-600 dark:text-gray-300 mt-4 transition-colors duration-300">
+          <p>
+            Don't have an account?{" "}
+            <a href="/signup" className="text-indigo-600 hover:underline">
+              Sign Up
+            </a>
+          </p>
+          <p className="mt-2">
             パスワードを忘れましたか？{" "}
             <a
               href="/password-reset-request"
@@ -85,7 +85,7 @@ const Login = () => {
               パスワードをリセットする
             </a>
           </p>
-        </p>
+        </div>
       </div>
     </div>
   );

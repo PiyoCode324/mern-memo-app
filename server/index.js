@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const path = require("path"); // pathモジュールをインポート
 const memoRoutes = require("./routes/memos");
 const authRoutes = require("./routes/auth");
+const userRoutes = require("./routes/users");
 require("dotenv").config();
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(express.json());
 
 // ルーティング (APIエンドポイント)
 app.use("/api/memos", memoRoutes); // メモ関連のAPIルート
+app.use("/api/users", userRoutes);
 app.use("/api", authRoutes); // 認証関連のAPIルート
 
 // Reactアプリケーションの静的ファイルをサーブ

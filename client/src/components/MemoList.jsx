@@ -1,4 +1,3 @@
-// client/src/components/MemoList.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchMemos, createMemo, updateMemo, deleteMemo } from "../api";
@@ -23,22 +22,25 @@ const MemoList = () => {
 
   const token = localStorage.getItem("token");
 
-  // 並び替え関数
-  const sortMemos = (memos, order) => {
-    // 元の配列を破壊しないようにコピー
-    return (
-      [...memos]
-        // まず作成日時で並び替え
-        .sort((a, b) =>
-          order === "newest"
-            ? // 新しい順（降順）
-              new Date(b.createdAt) - new Date(a.createdAt)
-            : // 古い順（昇順）
-              new Date(a.createdAt) - new Date(b.createdAt)
-        )
-        // 次にピン留めされたメモを上に持ってくる並び替え
-        .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
-    );
+  const sortMemos = (memosToSort, order) => {
+    let sorted = [...memosToSort];
+
+    sorted.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+      if (a.isDone !== b.isDone) {
+        return a.isDone ? 1 : -1;
+      }
+      if (order === "newest") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else if (order === "oldest") {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      return 0;
+    });
+
+    return sorted;
   };
 
   useEffect(() => {
@@ -64,7 +66,7 @@ const MemoList = () => {
         }
 
         const data = await response.json();
-        setMemos(sortMemos(data.memos, sortOrder));
+        setMemos(data.memos);
       } catch (err) {
         console.error("メモ取得エラー:", err);
         setError(err.message || "メモの取得に失敗しました。");
@@ -75,9 +77,12 @@ const MemoList = () => {
     };
 
     getMemos();
-  }, [token, navigate, sortOrder]);
+  }, [token, navigate]);
 
-  // 新規作成処理
+  useEffect(() => {
+    setMemos((prevMemos) => sortMemos(prevMemos, sortOrder));
+  }, [sortOrder]);
+
   const handleCreate = async (title, content) => {
     if (!token) {
       setError("ログインが必要です。");
@@ -97,7 +102,7 @@ const MemoList = () => {
       }
 
       const createdMemo = await response.json();
-      setMemos((prev) => [...prev, createdMemo]);
+      setMemos((prev) => sortMemos([...prev, createdMemo], sortOrder));
       toast.success("メモを作成しました！");
     } catch (err) {
       console.error("メモ作成エラー:", err);
@@ -142,7 +147,12 @@ const MemoList = () => {
         throw new Error(errorData.message || "メモ削除に失敗しました。");
       }
 
-      setMemos(memos.filter((memo) => memo._id !== id));
+      setMemos(
+        sortMemos(
+          memos.filter((memo) => memo._id !== id),
+          sortOrder
+        )
+      );
     } catch (err) {
       console.error("削除エラー:", err);
       setError(err.message || "メモ削除エラーが発生しました。");
@@ -257,20 +267,11 @@ const MemoList = () => {
       }
       const updatedMemo = await response.json();
 
-      // memos配列の更新 + ピンが上に来るソート
       const updatedMemos = memos.map((m) =>
         m._id === updatedMemo._id ? updatedMemo : m
       );
 
-      // ピン留めが上にくるソート処理（ピンの有無で優先し、あとは作成日時などでソート）
-      const sortedMemos = updatedMemos.sort((a, b) => {
-        if (a.isPinned === b.isPinned) {
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        }
-        return a.isPinned ? -1 : 1; // isPinned true は上に
-      });
-
-      setMemos(sortedMemos);
+      setMemos(sortMemos(updatedMemos, sortOrder));
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -279,18 +280,27 @@ const MemoList = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-extrabold text-gray-800 text-center flex-grow">
+        <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100 text-center flex-grow">
           📝 メモ一覧
         </h2>
         {token && (
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
-          >
-            ログアウト
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => navigate("/profile")}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
+            >
+              プロフィール
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
+            >
+              ログアウト
+            </button>
+          </div>
         )}
       </div>
 
@@ -302,31 +312,29 @@ const MemoList = () => {
           placeholder="タイトルまたは内容で検索"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-gray-100"
         />
       </div>
 
       {loading && (
-        <p className="text-blue-600 text-center mb-4">読み込み中...</p>
-      )}
-      {error && (
-        <p className="text-red-500 text-center mb-4 font-medium">
-          エラー: {error}
+        <p className="text-blue-600 dark:text-blue-400 text-center mb-4">
+          読み込み中...
         </p>
       )}
+      {error && (
+        <p className="text-red-500 text-center mb-4 font-medium">{`エラー: ${error}`}</p>
+      )}
 
-      {/* 作成フォーム */}
       <MemoForm token={token} loading={loading} onCreate={handleCreate} />
 
       {memos.length === 0 && !loading && !error && token && (
-        <p className="text-gray-600 text-center text-lg mt-8">
+        <p className="text-gray-600 dark:text-gray-400 text-center text-lg mt-8">
           メモがありません。新しいメモを作成しましょう！
         </p>
       )}
 
-      {/* メモカード */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMemos.map((memo) => (
+        {sortMemos(filteredMemos, sortOrder).map((memo) => (
           <MemoCard
             key={memo._id}
             memo={memo}
@@ -335,18 +343,17 @@ const MemoList = () => {
             editedContent={editedContent}
             setEditedTitle={setEditedTitle}
             setEditedContent={setEditedContent}
-            setEditingMemoId={setEditingMemoId} // ✅ ← これを追加
+            setEditingMemoId={setEditingMemoId}
             startEditing={startEditing}
             handleUpdate={handleUpdate}
             confirmDelete={confirmDelete}
             handleToggleDone={handleToggleDone}
-            handleTogglePin={handleTogglePin} // ✅ 渡す
+            handleTogglePin={handleTogglePin}
             loading={loading}
           />
         ))}
       </div>
 
-      {/* 削除モーダル */}
       <DeleteModal
         isOpen={showDeleteModal}
         onConfirm={handleDeleteConfirmed}

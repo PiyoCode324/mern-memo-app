@@ -1,19 +1,22 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const UserSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
+const UserSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    resetToken: String, // パスワードリセット用トークン
+    resetTokenExpires: Date, // トークンの有効期限
   },
-  password: {
-    type: String,
-    required: true,
-  },
-  resetToken: String, // パスワードリセット用トークン
-  resetTokenExpires: Date, // トークンの有効期限
-});
+  { timestamps: true } // ✅ これを追加！
+);
 
 // パスワードを保存前にハッシュ化するMongooseのpreフック
 UserSchema.pre("save", async function (next) {

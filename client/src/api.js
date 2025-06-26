@@ -87,3 +87,12 @@ export const passwordReset = async (token, newPassword) => {
     body: JSON.stringify({ token, newPassword }),
   });
 };
+
+export const fetchMemo = async (token, id) => {
+  const res = await fetch(`${API_BASE_URL}/api/memos/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res;
+};

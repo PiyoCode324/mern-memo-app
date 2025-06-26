@@ -107,4 +107,27 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
+// 🔍 Get a specific note (requires authentication) - GET /api/memos/:id
+router.get("/:id", verifyToken, async (req, res) => {
+  try {
+    const memo = await Memo.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
+    if (!memo) {
+      return res.status(404).json({
+        message: "メモが見つかりません、または閲覧する権限がありません。",
+      });
+    }
+
+    res.json(memo);
+  } catch (err) {
+    console.error("メモ取得エラー:", err);
+    res
+      .status(500)
+      .json({ message: "メモの取得中にサーバーエラーが発生しました。" });
+  }
+});
+
 module.exports = router;
