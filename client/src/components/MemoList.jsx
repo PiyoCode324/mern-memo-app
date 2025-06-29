@@ -1,123 +1,87 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchMemos, createMemo, updateMemo, deleteMemo } from "../api";
-import { Toaster, toast } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
+
+// Importing Child Components
 import MemoForm from "./MemoForm";
 import MemoCard from "./MemoCard";
 import DeleteModal from "./DeleteModal";
 import MemoSortSelect from "./MemoSortSelect";
+import Pagination from "./Pagination";
+
+// Importing custom hooks
+import { useMemoListLogic } from "../hooks/useMemoListLogic";
+import { useMemoActions } from "../hooks/useMemoActions";
+import { useFilteredMemos } from "../hooks/useFilteredMemos";
 
 const MemoList = () => {
   const navigate = useNavigate();
-  const [memos, setMemos] = useState([]);
+
+  // Status of the memo to be edited
   const [editedTitle, setEditedTitle] = useState("");
   const [editedContent, setEditedContent] = useState("");
   const [editingMemoId, setEditingMemoId] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+
+  // Display control of deletion modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMemoId, setSelectedMemoId] = useState(null);
+
+  // Sorting, searching, and category filtering
   const [sortOrder, setSortOrder] = useState("newest");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
+  // Editing Category
+  const [editedCategory, setEditedCategory] = useState("");
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10); // 1ページあたりの表示数
+
+  // Acquire a token for the logged-in user
   const token = localStorage.getItem("token");
 
-  const sortMemos = (memosToSort, order) => {
-    let sorted = [...memosToSort];
+  // ✅ Custom hooks to manage memo retrieval and loading states
+  const { memos, total, error, loading, loadMemos, setError, setLoading } =
+    useMemoListLogic(token, page, limit);
 
-    sorted.sort((a, b) => {
-      if (a.isPinned !== b.isPinned) {
-        return a.isPinned ? -1 : 1;
-      }
-      if (a.isDone !== b.isDone) {
-        return a.isDone ? 1 : -1;
-      }
-      if (order === "newest") {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      } else if (order === "oldest") {
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      }
-      return 0;
-    });
+  // ✅ Custom hooks to provide CRUD operations for memo etc.
+  const {
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    handleToggleDone,
+    handleTogglePin,
+  } = useMemoActions({
+    token,
+    loadMemos,
+    setLoading,
+    setError,
+    setEditingMemoId,
+  });
 
-    return sorted;
-  };
+  // ✅ Filtered, searched and sorted memo list
+  const { sortedAndFilteredMemos } = useFilteredMemos(
+    memos,
+    searchQuery,
+    filterCategory,
+    sortOrder
+  );
 
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const getMemos = async () => {
-      try {
-        const response = await fetchMemos(token);
-
-        if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem("token");
-          navigate("/login");
-          throw new Error("認証エラー: 再度ログインしてください。");
-        }
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setMemos(data.memos);
-      } catch (err) {
-        console.error("メモ取得エラー:", err);
-        setError(err.message || "メモの取得に失敗しました。");
-        setMemos([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getMemos();
-  }, [token, navigate]);
-
-  useEffect(() => {
-    setMemos((prevMemos) => sortMemos(prevMemos, sortOrder));
-  }, [sortOrder]);
-
-  const handleCreate = async (title, content) => {
-    if (!token) {
-      setError("ログインが必要です。");
-      toast.error("ログインが必要です。");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await createMemo(token, { title, content });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "メモ作成に失敗しました。");
-      }
-
-      const createdMemo = await response.json();
-      setMemos((prev) => sortMemos([...prev, createdMemo], sortOrder));
-      toast.success("メモを作成しました！");
-    } catch (err) {
-      console.error("メモ作成エラー:", err);
-      setError(err.message || "メモ作成エラーが発生しました。");
-      toast.error(err.message || "メモ作成エラーが発生しました。");
-    } finally {
-      setLoading(false);
+  // Processing when switching pages
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= Math.ceil(total / limit)) {
+      setPage(newPage);
     }
   };
 
+  // Preparing to display delete confirmation modal
   const confirmDelete = (id) => {
     setSelectedMemoId(id);
     setShowDeleteModal(true);
   };
 
+  // When the user confirms deletion in the modal, delete the memo
   const handleDeleteConfirmed = async () => {
     if (!selectedMemoId) return;
     await handleDelete(selectedMemoId);
@@ -125,166 +89,42 @@ const MemoList = () => {
     setSelectedMemoId(null);
   };
 
+  // When canceling the delete modal
   const handleCancelDelete = () => {
     setShowDeleteModal(false);
     setSelectedMemoId(null);
   };
 
-  const handleDelete = async (id) => {
-    if (!token) {
-      setError("ログインが必要です。");
-      toast.error("ログインが必要です。");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await deleteMemo(token, id);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "メモ削除に失敗しました。");
-      }
-
-      setMemos(
-        sortMemos(
-          memos.filter((memo) => memo._id !== id),
-          sortOrder
-        )
-      );
-    } catch (err) {
-      console.error("削除エラー:", err);
-      setError(err.message || "メモ削除エラーが発生しました。");
-      toast.error(err.message || "メモ削除エラーが発生しました。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Update status when editing begins
   const startEditing = (memo) => {
     setEditingMemoId(memo._id);
     setEditedTitle(memo.title);
     setEditedContent(memo.content);
+    setEditedCategory(memo.category || "");
   };
 
-  const handleUpdate = async (id) => {
-    if (!token) {
-      setError("ログインが必要です。");
-      toast.error("ログインが必要です。");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await updateMemo(token, id, {
-        title: editedTitle,
-        content: editedContent,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "メモ更新に失敗しました。");
-      }
-
-      const updatedMemo = await response.json();
-      const updatedMemos = memos.map((memo) =>
-        memo._id === id ? updatedMemo : memo
-      );
-      setMemos(sortMemos(updatedMemos, sortOrder));
-      setEditingMemoId(null);
-    } catch (err) {
-      console.error("更新エラー:", err);
-      setError(err.message || "メモ更新エラーが発生しました。");
-      toast.error(err.message || "メモ更新エラーが発生しました。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleDone = async (memo) => {
-    if (!token) {
-      setError("ログインが必要です。");
-      toast.error("ログインが必要です。");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await updateMemo(token, memo._id, {
-        title: memo.title,
-        content: memo.content,
-        isDone: !memo.isDone,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "完了状態の切り替えに失敗しました。"
-        );
-      }
-
-      const updatedMemo = await response.json();
-      const updatedMemos = memos.map((m) =>
-        m._id === memo._id ? updatedMemo : m
-      );
-      setMemos(sortMemos(updatedMemos, sortOrder));
-    } catch (err) {
-      console.error("完了状態の切り替えエラー:", err);
-      setError(err.message || "完了状態の切り替えエラーが発生しました。");
-      toast.error(err.message || "完了状態の切り替えエラーが発生しました。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handles logout: removes token and navigates to login screen
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     navigate("/login");
   };
 
-  const filteredMemos = memos.filter(
-    (memo) =>
-      memo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      memo.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleTogglePin = async (memo) => {
-    if (!token) {
-      toast.error("ログインが必要です。");
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await updateMemo(token, memo._id, {
-        isPinned: !memo.isPinned,
-      });
-      if (!response.ok) {
-        throw new Error("ピン状態の更新に失敗しました。");
-      }
-      const updatedMemo = await response.json();
-
-      const updatedMemos = memos.map((m) =>
-        m._id === updatedMemo._id ? updatedMemo : m
-      );
-
-      setMemos(sortMemos(updatedMemos, sortOrder));
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="p-4 md:p-8">
+      {/* Header: Trash, Title, Profile/Logout */}
       <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => navigate("/trash")}
+          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
+        >
+          🗑 ゴミ箱
+        </button>
+
         <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100 text-center flex-grow">
           📝 メモ一覧
         </h2>
+
         {token && (
           <div className="flex space-x-2">
             <button
@@ -293,7 +133,6 @@ const MemoList = () => {
             >
               プロフィール
             </button>
-
             <button
               onClick={handleLogout}
               className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-300"
@@ -304,8 +143,10 @@ const MemoList = () => {
         )}
       </div>
 
+      {/* Sort Selection Component */}
       <MemoSortSelect sortOrder={sortOrder} setSortOrder={setSortOrder} />
 
+      {/* Search box */}
       <div className="mb-6">
         <input
           type="text"
@@ -316,25 +157,47 @@ const MemoList = () => {
         />
       </div>
 
+      {/* Category Filter */}
+      <div className="mb-6">
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        >
+          <option value="">カテゴリで絞り込み（すべて）</option>
+          <option value="仕事">仕事</option>
+          <option value="日記">日記</option>
+          <option value="買い物">買い物</option>
+          <option value="アイデア">アイデア</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+
+      {/* Loading message*/}
       {loading && (
         <p className="text-blue-600 dark:text-blue-400 text-center mb-4">
           読み込み中...
         </p>
       )}
+
+      {/* Error message display */}
       {error && (
         <p className="text-red-500 text-center mb-4 font-medium">{`エラー: ${error}`}</p>
       )}
 
+      {/* Memo-taking form */}
       <MemoForm token={token} loading={loading} onCreate={handleCreate} />
 
+      {/* Display when no memos exist */}
       {memos.length === 0 && !loading && !error && token && (
         <p className="text-gray-600 dark:text-gray-400 text-center text-lg mt-8">
           メモがありません。新しいメモを作成しましょう！
         </p>
       )}
 
+      {/* Memo Card Display Area (Filtered + Sorted) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sortMemos(filteredMemos, sortOrder).map((memo) => (
+        {sortedAndFilteredMemos.map((memo) => (
           <MemoCard
             key={memo._id}
             memo={memo}
@@ -350,16 +213,27 @@ const MemoList = () => {
             handleToggleDone={handleToggleDone}
             handleTogglePin={handleTogglePin}
             loading={loading}
+            editedCategory={editedCategory}
+            setEditedCategory={setEditedCategory}
           />
         ))}
       </div>
 
+      {/* Delete confirmation modal */}
       <DeleteModal
         isOpen={showDeleteModal}
         onConfirm={handleDeleteConfirmed}
         onCancel={handleCancelDelete}
       />
 
+      {/* Pagination Component */}
+      <Pagination
+        page={page}
+        totalPages={Math.ceil(total / limit)}
+        onPageChange={handlePageChange}
+      />
+
+      {/* Toast display */}
       <Toaster position="top-center" />
     </div>
   );

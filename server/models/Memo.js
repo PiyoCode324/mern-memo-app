@@ -18,11 +18,19 @@ const memoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    category: {
+      type: String,
+      default: "",
+    },
     isDone: {
       type: Boolean,
       default: false,
     },
     isPinned: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
       type: Boolean,
       default: false,
     },

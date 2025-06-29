@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 const MemoForm = ({ token, loading, onCreate }) => {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [newCategory, setNewCategory] = useState("");
 
   const handleSubmit = async () => {
     if (!token) {
@@ -17,9 +18,17 @@ const MemoForm = ({ token, loading, onCreate }) => {
       });
       return;
     }
-    await onCreate(newTitle, newContent);
+    if (!newCategory) {
+      toast.error("カテゴリを選択してください。", {
+        duration: 2000,
+        icon: "⚠️",
+      });
+      return;
+    }
+    await onCreate(newTitle, newContent, newCategory);
     setNewTitle("");
     setNewContent("");
+    setNewCategory("");
   };
 
   return (
@@ -46,6 +55,21 @@ const MemoForm = ({ token, loading, onCreate }) => {
                    focus:outline-none focus:ring-2 focus:ring-indigo-500
                    dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-gray-100"
       />
+      <select
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+        disabled={!token || loading}
+        className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500
+                   dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+      >
+        <option value="">カテゴリを選択</option>
+        <option value="仕事">仕事</option>
+        <option value="日記">日記</option>
+        <option value="買い物">買い物</option>
+        <option value="アイデア">アイデア</option>
+        <option value="その他">その他</option>
+      </select>
       <button
         onClick={handleSubmit}
         disabled={!token || loading}

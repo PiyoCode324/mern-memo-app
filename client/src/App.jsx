@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./components/Profile";
 import MemoDetailPage from "./pages/MemoDetailPage";
 import Layout from "./components/Layout"; // ✅ 追加
+import TrashMemoList from "./components/TrashMemoList";
 
 const App = () => {
   // ダークモード状態の管理（初期値はlocalStorageから取得）
@@ -68,6 +69,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <MemoDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trash"
+              element={
+                <ProtectedRoute>
+                  <TrashMemoList />
                 </ProtectedRoute>
               }
             />

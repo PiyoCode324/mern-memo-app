@@ -27,11 +27,13 @@ export const login = async (email, password) => {
   return res;
 };
 
-export const fetchMemos = async (token) => {
-  const res = await fetch(`${API_BASE_URL}/api/memos`, {
-    // /api/memos
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export const fetchMemos = async (token, page = 1, limit = 10) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/memos?page=${page}&limit=${limit}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
   return res;
 };
 
@@ -93,6 +95,32 @@ export const fetchMemo = async (token, id) => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+  return res;
+};
+
+export const fetchTrashedMemos = async (token, page, limit) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/memos/trash?page=${page}&limit=${limit}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return res;
+};
+
+export const restoreMemo = async (token, id) => {
+  const res = await fetch(`${API_BASE_URL}/api/memos/${id}/restore`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res;
+};
+
+export const emptyTrash = async (token) => {
+  const res = await fetch(`${API_BASE_URL}/api/memos/trash`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
   });
   return res;
 };
