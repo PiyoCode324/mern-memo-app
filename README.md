@@ -9,7 +9,8 @@ IP:test@gmail.com
 PASSWORD:test
 
 📸 スクリーンショット
-PC画面	
+PC画面
+
 <img width="545" alt="メモ作成" src="https://github.com/user-attachments/assets/374678ef-9ac7-49e6-b464-4914c876415d" />
 <img width="418" alt="メモ一覧" src="https://github.com/user-attachments/assets/8b918c44-6a74-42bd-ad4f-2cb281ee32ec" />
 
