@@ -1,4 +1,5 @@
 📒 Memo App – シンプルなメモ管理アプリ
+
 🔗 デプロイURL
 https://memo-app.onrender.com
 ※スマートフォン・PCの両方に対応しています。
@@ -12,13 +13,9 @@ PC画面	スマホ画面
 
 🔧 使用技術
 フロントエンド: React, Tailwind CSS, Axios, React Router
-
 バックエンド: Node.js, Express
-
 データベース: MongoDB (Mongoose)
-
 ホスティング: Render, GitHub Pages
-
 その他: Firebase（画像アップロード機能）
 
 ✨ 主な機能
@@ -32,31 +29,25 @@ PC画面	スマホ画面
 
 💡 工夫した点・学んだこと
 状態管理：useState / useEffect など React のフックを活用して効率的な状態管理を実現
-
 データ設計：カテゴリ・アーカイブ・画像アップロードなどに対応したスキーマ構成を設計
-
 エラー対応：画像アップロード機能では非同期処理やバリデーションの重要性を体感
-
 UI/UX：モバイル対応を意識した設計、余白やフォントサイズの調整など視認性を工夫
-
 英語コメント：すべてのコードに英語コメントを追加し、読みやすさを向上
 
 🚀 今後追加予定の機能
-💬 コメント機能（メモに対する返信）
-
-📅 カレンダー表示やリマインダー設定
-
-🔐 パスワード付きメモ（プライベート管理）
+- 📅 カレンダー表示
+- ⏰ リマインダー機能（日時指定で通知）
+- 🌐 多言語対応（日本語／英語）
 
 👤 作者情報
 名前：
-GitHub：https://github.com/your-username
+GitHub：https://github.com/PiyoCode324
 
 📦 セットアップ方法（任意）
 bash
 Copy code
 # クローン
-git clone https://github.com/your-username/memo-app.git
+git clone https://github.com/PiyoCode324/memo-app.git
 
 # サーバー側
 cd server
@@ -67,5 +58,6 @@ npm run dev
 cd client
 npm install
 npm start
+
 📝 ライセンス
 MIT
