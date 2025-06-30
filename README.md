@@ -4,8 +4,16 @@
 https://memo-app.onrender.com
 ※スマートフォン・PCの両方に対応しています。
 
+🔓　ログイン用ID/PASSWORD
+IP:test@gmail.com
+PASSWORD:test
+
 📸 スクリーンショット
-PC画面	スマホ画面
+PC画面	
+<img width="545" alt="メモ作成" src="https://github.com/user-attachments/assets/374678ef-9ac7-49e6-b464-4914c876415d" />
+<img width="418" alt="メモ一覧" src="https://github.com/user-attachments/assets/8b918c44-6a74-42bd-ad4f-2cb281ee32ec" />
+
+スマホ画面
 
 📝 アプリの概要
 このアプリは、ユーザーが自分のメモを作成・編集・分類・管理できるシンプルなメモ管理ツールです。
@@ -40,7 +48,7 @@ UI/UX：モバイル対応を意識した設計、余白やフォントサイズ
 - 🌐 多言語対応（日本語／英語）
 
 👤 作者情報
-名前：
+名前：PiyoCode324
 GitHub：https://github.com/PiyoCode324
 
 📦 セットアップ方法（任意）
