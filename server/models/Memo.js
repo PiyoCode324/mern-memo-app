@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 const memoSchema = new mongoose.Schema(
   {
     userId: {
-      // <-- この行を追加します
       type: mongoose.Schema.Types.ObjectId, // ユーザーIDはMongoDBのObjectId型です
       ref: "User", // 'User'モデルへの参照を示します (任意ですが良い習慣です)
       required: true, // このフィールドを必須にする場合は true に設定します
@@ -34,6 +33,18 @@ const memoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    attachments: [
+      // ここを修正します
+      new mongoose.Schema(
+        {
+          // 各添付ファイルをMongooseのサブスキーマとして明確に定義
+          url: { type: String, required: true },
+          name: { type: String, required: true },
+          type: { type: String, required: true },
+        },
+        { _id: false }
+      ), // _id: false を追加して、各添付ファイルオブジェクトに自動で_idを生成しないようにします
+    ],
   },
   { timestamps: true }
 );

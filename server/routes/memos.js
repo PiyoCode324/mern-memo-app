@@ -27,22 +27,54 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// POST /api/memos - 新しいメモを作成 (認証が必要)
+// server/routes/memos.js 内の POST /api/memos ルートの部分
+
 router.post("/", verifyToken, async (req, res) => {
   try {
-    const { title, content, category } = req.body; // categoryを追加
-    // バリデーション
+    const { title, content, category, attachments } = req.body;
+
+    // --- ここにデバッグログを追加 ---
+    console.log("------------------- DEBUG LOG START -------------------");
+    console.log("Received attachments in server:", attachments);
+    console.log("Type of received attachments (typeof):", typeof attachments);
+    console.log(
+      "Is attachments an array (Array.isArray):",
+      Array.isArray(attachments)
+    );
+    if (typeof attachments === "string") {
+      console.log("Attachments is a string. Attempting JSON.parse()...");
+      try {
+        const parsedAttachments = JSON.parse(attachments);
+        console.log("Successfully parsed attachments:", parsedAttachments);
+        console.log(
+          "Type of parsed attachments (typeof):",
+          typeof parsedAttachments
+        );
+        console.log(
+          "Is parsed attachments an array (Array.isArray):",
+          Array.isArray(parsedAttachments)
+        );
+        // もしここで正しくパースされるなら、req.body.attachments を上書きする
+        req.body.attachments = parsedAttachments;
+      } catch (parseError) {
+        console.error("Failed to parse attachments string:", parseError);
+      }
+    }
+    console.log("------------------- DEBUG LOG END ---------------------");
+    // ----------------------------
+
     if (!title || !content) {
       return res.status(400).json({ message: "タイトルと内容は必須です。" });
     }
 
-    // 新しいメモを作成し、認証済みユーザーIDと紐付ける
     const newMemo = new Memo({
       userId: req.user.userId,
       title,
       content,
-      category: category || "", // categoryを保存
+      category: category || "",
+      attachments: attachments || [], // この行は、上記のデバッグログでattachmentsがparsedAttachmentsに置き換えられている場合は、その新しい値を使う
     });
+
     await newMemo.save();
     res.status(201).json(newMemo);
   } catch (err) {

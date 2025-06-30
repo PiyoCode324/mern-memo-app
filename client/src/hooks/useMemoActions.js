@@ -1,5 +1,3 @@
-// hooks/useMemoActions.js
-
 import { useCallback } from "react";
 import { createMemo, updateMemo, deleteMemo } from "../api";
 import { toast } from "react-hot-toast";
@@ -16,7 +14,7 @@ export const useMemoActions = ({
 }) => {
   // 🔸 New memo creation process
   const handleCreate = useCallback(
-    async (title, content, category) => {
+    async (title, content, category, attachments = []) => {
       if (!token) {
         toast.error("ログインが必要です。");
         setError("ログインが必要です。");
@@ -27,7 +25,12 @@ export const useMemoActions = ({
       setError(null);
 
       try {
-        const response = await createMemo(token, { title, content, category });
+        const response = await createMemo(token, {
+          title,
+          content,
+          category,
+          attachments,
+        });
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -49,7 +52,7 @@ export const useMemoActions = ({
 
   // 🔸 Editing and updating memos
   const handleUpdate = useCallback(
-    async (id, title, content, category) => {
+    async (id, title, content, category, attachments = undefined) => {
       if (!token) {
         toast.error("ログインが必要です。");
         setError("ログインが必要です。");
@@ -60,11 +63,18 @@ export const useMemoActions = ({
       setError(null);
 
       try {
-        const response = await updateMemo(token, id, {
+        const payload = {
           title,
           content,
           category,
-        });
+        };
+
+        // 添付ファイルが明示的に指定されている場合のみ更新対象に含める
+        if (attachments !== undefined) {
+          payload.attachments = attachments;
+        }
+
+        const response = await updateMemo(token, id, payload);
 
         if (!response.ok) {
           const errorData = await response.json();

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 const MemoCard = ({
@@ -18,6 +18,21 @@ const MemoCard = ({
   editedCategory,
   setEditedCategory,
 }) => {
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+
+  // PDFプレビューモーダルを開く
+  const openPdfModal = (url) => {
+    setPdfUrl(url);
+    setShowPdfModal(true);
+  };
+
+  // PDFプレビューモーダルを閉じる
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+    setPdfUrl("");
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       {editingMemoId === memo._id ? (
@@ -50,6 +65,8 @@ const MemoCard = ({
             <option value="アイデア">アイデア</option>
             <option value="その他">その他</option>
           </select>
+
+          {/* ※ ファイル編集は別途対応が必要です */}
 
           <div className="flex gap-3">
             <button
@@ -86,7 +103,7 @@ const MemoCard = ({
             </Link>
           </h3>
 
-          {/* ✅ ここにカテゴリ表示を追加 */}
+          {/* カテゴリ表示 */}
           {memo.category && (
             <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-2">
               カテゴリ: {memo.category}
@@ -102,6 +119,39 @@ const MemoCard = ({
           <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
             作成日: {new Date(memo.createdAt).toLocaleString()}
           </p>
+
+          {/* 添付ファイル一覧表示 */}
+          {memo.attachments && memo.attachments.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                添付ファイル
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                {memo.attachments.map((file, index) => (
+                  <div key={index} className="relative">
+                    {file.type.startsWith("image/") ? (
+                      <img
+                        src={file.url}
+                        alt={file.name}
+                        className="w-20 h-20 object-cover rounded cursor-pointer border border-gray-300"
+                        onClick={() => window.open(file.url, "_blank")}
+                      />
+                    ) : file.type === "application/pdf" ? (
+                      <button
+                        onClick={() => openPdfModal(file.url)}
+                        className="w-20 h-20 flex items-center justify-center bg-gray-300 rounded cursor-pointer text-sm
+                                   border border-gray-300 dark:bg-gray-700 dark:text-gray-300"
+                      >
+                        PDF
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 操作ボタン群 */}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => startEditing(memo)}
@@ -137,6 +187,20 @@ const MemoCard = ({
               📌
             </button>
           </div>
+        </div>
+      )}
+
+      {/* PDFプレビューモーダル */}
+      {showPdfModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={closePdfModal}
+        >
+          <iframe
+            src={pdfUrl}
+            title="PDF Preview"
+            className="w-11/12 h-5/6 bg-white rounded shadow-lg"
+          />
         </div>
       )}
     </div>
