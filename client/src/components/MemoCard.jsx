@@ -72,13 +72,21 @@ const MemoCard = ({
 
           <div className="flex gap-3">
             <button
-              onClick={() => handleUpdate(memo._id)}
+              onClick={() =>
+                handleUpdate(
+                  memo._id,
+                  editedTitle,
+                  editedContent,
+                  editedCategory
+                )
+              }
               disabled={loading}
               className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
+             disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
             >
               保存
             </button>
+
             <button
               onClick={() => setEditingMemoId(null)}
               className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg

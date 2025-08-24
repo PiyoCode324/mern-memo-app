@@ -3,6 +3,7 @@ client/node_modules/
 server/node_modules/
 
 .env
+.env.local
 
 MEMO.md
 面談.md

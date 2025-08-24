@@ -1,3 +1,4 @@
+// src/components/MemoForm.jsx
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { uploadFile } from "../hooks/utils/uploadFile";
@@ -79,7 +80,6 @@ const MemoForm = ({ token, loading, onCreate }) => {
       setNewCategory("");
       setFiles([]);
       setPreviews([]);
-      toast.success("メモを作成しました！");
     } catch (err) {
       console.error(err);
       toast.error("ファイルのアップロードまたはメモ作成に失敗しました。");

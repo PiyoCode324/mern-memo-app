@@ -1,3 +1,4 @@
+// server/routes/memo.js
 const express = require("express");
 const verifyToken = require("../middleware/verifyToken"); // JWT認証ミドルウェアをインポート
 const Memo = require("../models/Memo"); // Memoモデルをインポート
@@ -162,26 +163,27 @@ router.get("/:id", verifyToken, async (req, res) => {
 // PUT /api/memos/:id - 特定のメモを編集 (認証が必要)
 router.put("/:id", verifyToken, async (req, res) => {
   try {
-    const { title, content, category, isDone, isPinned } = req.body; // categoryを追加
+    const { title, content, category, isDone, isPinned } = req.body;
+
+    // 更新するフィールドだけをまとめる
+    const updateFields = {};
+    if (title !== undefined) updateFields.title = title;
+    if (content !== undefined) updateFields.content = content;
+    if (category !== undefined) updateFields.category = category;
+    if (isDone !== undefined) updateFields.isDone = isDone;
+    if (isPinned !== undefined) updateFields.isPinned = isPinned;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res
+        .status(400)
+        .json({ message: "更新内容が指定されていません。" });
+    }
 
     const updatedMemo = await Memo.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
-      { title, content, category, isDone, isPinned }, // isPinnedも含むように更新
+      updateFields,
       { new: true }
     );
-
-    // バリデーション
-    if (
-      title === undefined &&
-      content === undefined &&
-      category === undefined &&
-      isDone === undefined &&
-      isPinned === undefined
-    ) {
-      return res.status(400).json({
-        message: "更新内容が指定されていません。",
-      });
-    }
 
     if (!updatedMemo) {
       return res.status(404).json({
@@ -197,6 +199,45 @@ router.put("/:id", verifyToken, async (req, res) => {
       .json({ message: "メモの更新中にサーバーエラーが発生しました。" });
   }
 });
+
+// // PUT /api/memos/:id - 特定のメモを編集 (認証が必要)
+// router.put("/:id", verifyToken, async (req, res) => {
+//   try {
+//     const { title, content, category, isDone, isPinned } = req.body; // categoryを追加
+
+//     const updatedMemo = await Memo.findOneAndUpdate(
+//       { _id: req.params.id, userId: req.user.userId },
+//       { title, content, category, isDone, isPinned }, // isPinnedも含むように更新
+//       { new: true }
+//     );
+
+//     // バリデーション
+//     if (
+//       title === undefined &&
+//       content === undefined &&
+//       category === undefined &&
+//       isDone === undefined &&
+//       isPinned === undefined
+//     ) {
+//       return res.status(400).json({
+//         message: "更新内容が指定されていません。",
+//       });
+//     }
+
+//     if (!updatedMemo) {
+//       return res.status(404).json({
+//         message: "メモが見つかりません、または更新する権限がありません。",
+//       });
+//     }
+
+//     res.json(updatedMemo);
+//   } catch (err) {
+//     console.error("メモ更新エラー:", err);
+//     res
+//       .status(500)
+//       .json({ message: "メモの更新中にサーバーエラーが発生しました。" });
+//   }
+// });
 
 // DELETE /api/memos/:id - 特定のメモを削除 (ゴミ箱へ移動、認証が必要)
 router.delete("/:id", verifyToken, async (req, res) => {

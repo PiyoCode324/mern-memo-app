@@ -1,3 +1,5 @@
+// src/hooks/useMemoListLogic.js
+
 // Custom hook: Responsible for obtaining the list of memos and managing their status
 import { useCallback, useEffect, useState } from "react";
 import { fetchMemos } from "../api";
@@ -38,11 +40,11 @@ export const useMemoListLogic = (token, page, limit) => {
       const response = await fetchMemos(token, page, limit);
 
       // In case of authentication error, go to login screen
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem("token");
-        navigate("/login");
-        throw new Error("認証エラー: 再度ログインしてください。");
-      }
+      // if (response.status === 401 || response.status === 403) {
+      //   localStorage.removeItem("token");
+      //   navigate("/login");
+      //   throw new Error("認証エラー: 再度ログインしてください。");
+      // }
 
       // Other HTTP error handling
       if (!response.ok) {

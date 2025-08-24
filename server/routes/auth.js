@@ -1,3 +1,5 @@
+// server/routes/auth.js
+
 const express = require("express");
 const crypto = require("crypto");
 const User = require("../models/User");
@@ -56,7 +58,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     res.json({ token, message: "ログイン成功" });
