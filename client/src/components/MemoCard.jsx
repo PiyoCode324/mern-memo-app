@@ -3,33 +3,45 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
+/**
+ * メモカードコンポーネント
+ * 1件のメモを表示し、編集・削除・完了切替・ピン留めなどの操作を提供
+ * PDFや画像添付ファイルのプレビューにも対応
+ */
 const MemoCard = ({
-  memo,
-  editingMemoId,
-  editedTitle,
-  editedContent,
-  setEditedTitle,
-  setEditedContent,
-  loading,
-  startEditing,
-  handleUpdate,
-  setEditingMemoId,
-  confirmDelete,
-  handleToggleDone,
-  handleTogglePin,
-  editedCategory,
-  setEditedCategory,
+  memo, // メモデータ（タイトル、内容、カテゴリ、ステータス、添付ファイルなど）
+  editingMemoId, // 現在編集中のメモID
+  editedTitle, // 編集中のタイトル
+  editedContent, // 編集中の内容
+  setEditedTitle, // 編集タイトル更新関数
+  setEditedContent, // 編集内容更新関数
+  loading, // 保存処理中フラグ
+  startEditing, // 編集開始処理
+  handleUpdate, // メモ更新処理
+  setEditingMemoId, // 編集中IDセット関数
+  confirmDelete, // 削除確認処理
+  handleToggleDone, // 完了/未完了切替処理
+  handleTogglePin, // ピン留め切替処理
+  editedCategory, // 編集中カテゴリ
+  setEditedCategory, // 編集中カテゴリ更新関数
 }) => {
+  // PDFプレビューモーダルの表示フラグ
   const [showPdfModal, setShowPdfModal] = useState(false);
+  // PDFプレビュー用URL
   const [pdfUrl, setPdfUrl] = useState("");
 
-  // PDFプレビューモーダルを開く
+  /**
+   * PDFプレビューモーダルを開く
+   * @param {string} url PDFのURL
+   */
   const openPdfModal = (url) => {
     setPdfUrl(url);
     setShowPdfModal(true);
   };
 
-  // PDFプレビューモーダルを閉じる
+  /**
+   * PDFプレビューモーダルを閉じる
+   */
   const closePdfModal = () => {
     setShowPdfModal(false);
     setPdfUrl("");
@@ -37,8 +49,10 @@ const MemoCard = ({
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      {/* 編集モード判定 */}
       {editingMemoId === memo._id ? (
         <div>
+          {/* タイトル編集フォーム */}
           <input
             value={editedTitle}
             onChange={(e) => setEditedTitle(e.target.value)}
@@ -46,6 +60,8 @@ const MemoCard = ({
             className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-md
                        dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           />
+
+          {/* 内容編集フォーム */}
           <textarea
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
@@ -54,6 +70,7 @@ const MemoCard = ({
                        dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           />
 
+          {/* カテゴリ選択 */}
           <select
             value={editedCategory}
             onChange={(e) => setEditedCategory(e.target.value)}
@@ -68,8 +85,7 @@ const MemoCard = ({
             <option value="その他">その他</option>
           </select>
 
-          {/* ※ ファイル編集は別途対応が必要です */}
-
+          {/* 保存・キャンセルボタン */}
           <div className="flex gap-3">
             <button
               onClick={() =>
@@ -80,7 +96,7 @@ const MemoCard = ({
                   editedCategory
                 )
               }
-              disabled={loading}
+              disabled={loading} // 保存中は押せない
               className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg
              disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
             >
@@ -88,7 +104,7 @@ const MemoCard = ({
             </button>
 
             <button
-              onClick={() => setEditingMemoId(null)}
+              onClick={() => setEditingMemoId(null)} // 編集キャンセル
               className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg
                          transition-colors duration-300"
             >
@@ -97,7 +113,9 @@ const MemoCard = ({
           </div>
         </div>
       ) : (
+        // 表示モード
         <div>
+          {/* タイトル */}
           <h3
             className={`text-xl font-bold mb-2 ${
               memo.isDone
@@ -106,7 +124,7 @@ const MemoCard = ({
             }`}
           >
             <Link
-              to={`/memo/${memo._id}`}
+              to={`/memo/${memo._id}`} // 詳細ページへのリンク
               className="hover:underline text-blue-600 dark:text-blue-400 block"
             >
               {memo.title}
@@ -120,17 +138,22 @@ const MemoCard = ({
             </p>
           )}
 
+          {/* メモ内容 */}
           <p className="text-gray-700 dark:text-gray-300 mb-3">
             {memo.content}
           </p>
+
+          {/* 完了ステータス */}
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
             完了: {memo.isDone ? "✅" : "❌"}
           </p>
+
+          {/* 作成日 */}
           <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
             作成日: {new Date(memo.createdAt).toLocaleString()}
           </p>
 
-          {/* 添付ファイル一覧表示 */}
+          {/* 添付ファイル一覧 */}
           {memo.attachments && memo.attachments.length > 0 && (
             <div className="mb-4">
               <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -139,6 +162,7 @@ const MemoCard = ({
               <div className="flex flex-wrap gap-3">
                 {memo.attachments.map((file, index) => (
                   <div key={index} className="relative">
+                    {/* 画像ファイル */}
                     {file.type.startsWith("image/") ? (
                       <img
                         src={file.url}
@@ -147,6 +171,7 @@ const MemoCard = ({
                         onClick={() => window.open(file.url, "_blank")}
                       />
                     ) : file.type === "application/pdf" ? (
+                      // PDFファイルはモーダルで表示
                       <button
                         onClick={() => openPdfModal(file.url)}
                         className="w-20 h-20 flex items-center justify-center bg-gray-300 rounded cursor-pointer text-sm
@@ -204,7 +229,7 @@ const MemoCard = ({
       {showPdfModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
-          onClick={closePdfModal}
+          onClick={closePdfModal} // モーダル外クリックで閉じる
         >
           <iframe
             src={pdfUrl}

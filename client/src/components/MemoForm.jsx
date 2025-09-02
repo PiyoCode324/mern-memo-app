@@ -3,20 +3,37 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { uploadFile } from "../hooks/utils/uploadFile";
 
+/**
+ * MemoForm コンポーネント
+ * - 新しいメモを作成するフォーム
+ * - タイトル・内容・カテゴリを入力可能
+ * - 画像 / PDF ファイルをアップロード可能
+ * - 入力内容は `onCreate` を通じて親に渡す
+ *
+ * Props:
+ *  - token: ユーザーの認証トークン（未ログイン時はフォーム無効）
+ *  - loading: 親側でAPI通信中かどうか（trueのとき操作不可）
+ *  - onCreate: メモ作成時に呼び出すコールバック関数
+ */
 const MemoForm = ({ token, loading, onCreate }) => {
-  const [newTitle, setNewTitle] = useState("");
-  const [newContent, setNewContent] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [files, setFiles] = useState([]);
-  const [previews, setPreviews] = useState([]);
-  const [uploading, setUploading] = useState(false);
+  // フォームの入力値を管理
+  const [newTitle, setNewTitle] = useState(""); // メモタイトル
+  const [newContent, setNewContent] = useState(""); // 本文
+  const [newCategory, setNewCategory] = useState(""); // カテゴリ
+  const [files, setFiles] = useState([]); // 選択されたファイル（実体）
+  const [previews, setPreviews] = useState([]); // プレビュー用データ
+  const [uploading, setUploading] = useState(false); // アップロード中フラグ
 
-  // ファイル選択時の処理
+  /**
+   * ファイル選択時の処理
+   * - 画像 → FileReader で base64 プレビューを生成
+   * - PDF → プレビューはファイル名表示
+   * - その他の形式はエラー
+   */
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     setFiles(selectedFiles);
 
-    // 画像はbase64プレビュー、PDFはファイル名表示
     const newPreviews = [];
     selectedFiles.forEach((file) => {
       if (file.type.startsWith("image/")) {
@@ -24,7 +41,7 @@ const MemoForm = ({ token, loading, onCreate }) => {
         reader.onload = () => {
           newPreviews.push({
             type: "image",
-            src: reader.result,
+            src: reader.result, // base64形式
             name: file.name,
           });
           if (newPreviews.length === selectedFiles.length)
@@ -41,12 +58,19 @@ const MemoForm = ({ token, loading, onCreate }) => {
     });
   };
 
-  // プレビューからファイルを削除
+  /** プレビューからファイル削除 */
   const handleRemoveFile = (index) => {
     setFiles(files.filter((_, i) => i !== index));
     setPreviews(previews.filter((_, i) => i !== index));
   };
 
+  /**
+   * フォーム送信処理
+   * - バリデーション（ログイン必須、必須項目チェック）
+   * - ファイルがあればアップロードしてURL取得
+   * - onCreate を実行して親に渡す
+   * - 成功後はフォームリセット
+   */
   const handleSubmit = async () => {
     if (!token) {
       toast.error("ログインが必要です。");
@@ -64,17 +88,20 @@ const MemoForm = ({ token, loading, onCreate }) => {
     try {
       setUploading(true);
 
+      // ファイルアップロード（utils/uploadFileを使用）
       const fileUrls = await Promise.all(files.map((file) => uploadFile(file)));
 
+      // アップロード結果をattachmentsとして整形
       const attachments = fileUrls.map((url, idx) => ({
         url,
         name: files[idx].name,
         type: files[idx].type,
       }));
 
-      // ✅ 個別に分けて渡す
+      // 親にメモ作成を依頼
       await onCreate(newTitle, newContent, newCategory, attachments);
 
+      // 入力リセット
       setNewTitle("");
       setNewContent("");
       setNewCategory("");
@@ -93,6 +120,8 @@ const MemoForm = ({ token, loading, onCreate }) => {
       <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-100 mb-4">
         📌 新しいメモを作成
       </h3>
+
+      {/* タイトル入力 */}
       <input
         type="text"
         placeholder="タイトル"
@@ -101,6 +130,8 @@ const MemoForm = ({ token, loading, onCreate }) => {
         disabled={!token || loading || uploading}
         className="w-full px-4 py-2 mb-3 border rounded-md"
       />
+
+      {/* 本文入力 */}
       <textarea
         placeholder="内容"
         value={newContent}
@@ -108,6 +139,8 @@ const MemoForm = ({ token, loading, onCreate }) => {
         disabled={!token || loading || uploading}
         className="w-full px-4 py-2 mb-4 h-32 resize-y border rounded-md"
       />
+
+      {/* カテゴリ選択 */}
       <select
         value={newCategory}
         onChange={(e) => setNewCategory(e.target.value)}
@@ -122,6 +155,7 @@ const MemoForm = ({ token, loading, onCreate }) => {
         <option value="その他">その他</option>
       </select>
 
+      {/* ファイル選択 */}
       <input
         type="file"
         accept="image/*,application/pdf"
@@ -146,6 +180,7 @@ const MemoForm = ({ token, loading, onCreate }) => {
                 PDF
               </div>
             )}
+            {/* プレビュー削除ボタン */}
             <button
               onClick={() => handleRemoveFile(i)}
               type="button"
@@ -157,6 +192,7 @@ const MemoForm = ({ token, loading, onCreate }) => {
         ))}
       </div>
 
+      {/* 作成ボタン */}
       <button
         onClick={handleSubmit}
         disabled={!token || loading || uploading}

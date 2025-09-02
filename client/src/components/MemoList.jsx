@@ -1,51 +1,50 @@
+// client/src/components/MemoList.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
-// Importing Child Components
-import MemoForm from "./MemoForm";
-import MemoCard from "./MemoCard";
-import DeleteModal from "./DeleteModal";
-import MemoSortSelect from "./MemoSortSelect";
-import Pagination from "./Pagination";
+// 子コンポーネントのインポート
+import MemoForm from "./MemoForm"; // 新規メモ作成フォーム
+import MemoCard from "./MemoCard"; // 各メモの表示カード
+import DeleteModal from "./DeleteModal"; // 削除確認モーダル
+import MemoSortSelect from "./MemoSortSelect"; // 並び替え選択
+import Pagination from "./Pagination"; // ページネーション
 
-// Importing custom hooks
-import { useMemoListLogic } from "../hooks/useMemoListLogic";
-import { useMemoActions } from "../hooks/useMemoActions";
-import { useFilteredMemos } from "../hooks/useFilteredMemos";
+// カスタムフックのインポート
+import { useMemoListLogic } from "../hooks/useMemoListLogic"; // メモ取得・状態管理
+import { useMemoActions } from "../hooks/useMemoActions"; // CRUD操作ロジック
+import { useFilteredMemos } from "../hooks/useFilteredMemos"; // 検索・フィルタ・ソート処理
 
 const MemoList = () => {
   const navigate = useNavigate();
 
-  // Status of the memo to be edited
+  // 編集中メモの状態管理
   const [editedTitle, setEditedTitle] = useState("");
   const [editedContent, setEditedContent] = useState("");
   const [editingMemoId, setEditingMemoId] = useState(null);
+  const [editedCategory, setEditedCategory] = useState("");
 
-  // Display control of deletion modal
+  // 削除モーダル関連
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMemoId, setSelectedMemoId] = useState(null);
 
-  // Sorting, searching, and category filtering
-  const [sortOrder, setSortOrder] = useState("newest");
+  // 並び替え・検索・カテゴリフィルタ
+  const [sortOrder, setSortOrder] = useState("newest"); // デフォルトは新しい順
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
 
-  // Editing Category
-  const [editedCategory, setEditedCategory] = useState("");
-
-  // Pagination
+  // ページネーション管理
   const [page, setPage] = useState(1);
-  const [limit] = useState(10); // 1ページあたりの表示数
+  const [limit] = useState(10); // 1ページあたり表示件数
 
-  // Acquire a token for the logged-in user
+  // ログインユーザーのトークンを取得
   const token = localStorage.getItem("token");
 
-  // ✅ Custom hooks to manage memo retrieval and loading states
+  // ✅ カスタムフック: メモ一覧取得とローディング管理
   const { memos, total, error, loading, loadMemos, setError, setLoading } =
     useMemoListLogic(token, page, limit);
 
-  // ✅ Custom hooks to provide CRUD operations for memo etc.
+  // ✅ カスタムフック: メモのCRUD操作
   const {
     handleCreate,
     handleUpdate,
@@ -60,7 +59,7 @@ const MemoList = () => {
     setEditingMemoId,
   });
 
-  // ✅ Filtered, searched and sorted memo list
+  // ✅ 検索・カテゴリフィルタ・並び替え済みのメモ一覧
   const { sortedAndFilteredMemos } = useFilteredMemos(
     memos,
     searchQuery,
@@ -68,20 +67,20 @@ const MemoList = () => {
     sortOrder
   );
 
-  // Processing when switching pages
+  // ページ切り替え処理
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= Math.ceil(total / limit)) {
       setPage(newPage);
     }
   };
 
-  // Preparing to display delete confirmation modal
+  // 削除確認モーダルを開く
   const confirmDelete = (id) => {
     setSelectedMemoId(id);
     setShowDeleteModal(true);
   };
 
-  // When the user confirms deletion in the modal, delete the memo
+  // モーダルで削除確定
   const handleDeleteConfirmed = async () => {
     if (!selectedMemoId) return;
     await handleDelete(selectedMemoId);
@@ -89,13 +88,13 @@ const MemoList = () => {
     setSelectedMemoId(null);
   };
 
-  // When canceling the delete modal
+  // モーダルをキャンセル
   const handleCancelDelete = () => {
     setShowDeleteModal(false);
     setSelectedMemoId(null);
   };
 
-  // Update status when editing begins
+  // 編集開始時にフォームに値をセット
   const startEditing = (memo) => {
     setEditingMemoId(memo._id);
     setEditedTitle(memo.title);
@@ -103,7 +102,7 @@ const MemoList = () => {
     setEditedCategory(memo.category || "");
   };
 
-  // Handles logout: removes token and navigates to login screen
+  // ログアウト処理
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
@@ -112,8 +111,9 @@ const MemoList = () => {
 
   return (
     <div className="p-4 md:p-8">
-      {/* Header: Trash, Title, Profile/Logout */}
+      {/* ===== ヘッダー部分 ===== */}
       <div className="flex justify-between items-center mb-6">
+        {/* ゴミ箱ページへ */}
         <button
           onClick={() => navigate("/trash")}
           className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
@@ -121,10 +121,12 @@ const MemoList = () => {
           🗑 ゴミ箱
         </button>
 
+        {/* タイトル */}
         <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100 text-center flex-grow">
           📝 メモ一覧
         </h2>
 
+        {/* プロフィール・ログアウト（ログイン時のみ表示） */}
         {token && (
           <div className="flex space-x-2">
             <button
@@ -143,10 +145,10 @@ const MemoList = () => {
         )}
       </div>
 
-      {/* Sort Selection Component */}
+      {/* 並び替えセレクト */}
       <MemoSortSelect sortOrder={sortOrder} setSortOrder={setSortOrder} />
 
-      {/* Search box */}
+      {/* 検索ボックス */}
       <div className="mb-6">
         <input
           type="text"
@@ -157,7 +159,7 @@ const MemoList = () => {
         />
       </div>
 
-      {/* Category Filter */}
+      {/* カテゴリフィルタ */}
       <div className="mb-6">
         <select
           value={filterCategory}
@@ -173,29 +175,27 @@ const MemoList = () => {
         </select>
       </div>
 
-      {/* Loading message*/}
+      {/* 読み込み中・エラー表示 */}
       {loading && (
         <p className="text-blue-600 dark:text-blue-400 text-center mb-4">
           読み込み中...
         </p>
       )}
-
-      {/* Error message display */}
       {error && (
         <p className="text-red-500 text-center mb-4 font-medium">{`エラー: ${error}`}</p>
       )}
 
-      {/* Memo-taking form */}
+      {/* 新規メモ作成フォーム */}
       <MemoForm token={token} loading={loading} onCreate={handleCreate} />
 
-      {/* Display when no memos exist */}
+      {/* メモがない場合のメッセージ */}
       {memos.length === 0 && !loading && !error && token && (
         <p className="text-gray-600 dark:text-gray-400 text-center text-lg mt-8">
           メモがありません。新しいメモを作成しましょう！
         </p>
       )}
 
-      {/* Memo Card Display Area (Filtered + Sorted) */}
+      {/* ===== メモ一覧の表示（フィルタ・ソート済み） ===== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedAndFilteredMemos.map((memo) => (
           <MemoCard
@@ -219,21 +219,21 @@ const MemoList = () => {
         ))}
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* 削除確認モーダル */}
       <DeleteModal
         isOpen={showDeleteModal}
         onConfirm={handleDeleteConfirmed}
         onCancel={handleCancelDelete}
       />
 
-      {/* Pagination Component */}
+      {/* ページネーション */}
       <Pagination
         page={page}
         totalPages={Math.ceil(total / limit)}
         onPageChange={handlePageChange}
       />
 
-      {/* Toast display */}
+      {/* トースト通知 */}
       <Toaster position="top-center" />
     </div>
   );

@@ -4,7 +4,8 @@ import { createMemo, updateMemo, deleteMemo } from "../api";
 import { toast } from "react-hot-toast";
 
 /**
- * Custom hooks to handle actions on memos (create, update, delete, pin, mark as done)
+ * メモに対するアクションを扱うカスタムフック
+ * （作成・更新・削除・ピン切替・完了状態切替）
  */
 export const useMemoActions = ({
   token,
@@ -13,7 +14,7 @@ export const useMemoActions = ({
   setError,
   setEditingMemoId,
 }) => {
-  // 🔸 New memo creation process
+  // 🔸 新しいメモ作成処理
   const handleCreate = useCallback(
     async (title, content, category, attachments = []) => {
       if (!token) {
@@ -26,6 +27,7 @@ export const useMemoActions = ({
       setError(null);
 
       try {
+        // API経由でメモ作成
         const response = await createMemo(token, {
           title,
           content,
@@ -38,7 +40,7 @@ export const useMemoActions = ({
           throw new Error(errorData.message || "メモ作成に失敗しました。");
         }
 
-        await loadMemos();
+        await loadMemos(); // 作成後にメモ一覧を再読み込み
         toast.success("メモを作成しました！");
       } catch (err) {
         console.error("メモ作成エラー:", err);
@@ -51,7 +53,7 @@ export const useMemoActions = ({
     [token, loadMemos, setLoading, setError]
   );
 
-  // 🔸 Editing and updating memos
+  // 🔸 メモ編集・更新処理
   const handleUpdate = useCallback(
     async (id, title, content, category, attachments = undefined) => {
       if (!token) {
@@ -70,7 +72,7 @@ export const useMemoActions = ({
           category,
         };
 
-        // 添付ファイルが明示的に指定されている場合のみ更新対象に含める
+        // 添付ファイルが明示的に渡されている場合のみ更新対象に含める
         if (attachments !== undefined) {
           payload.attachments = attachments;
         }
@@ -82,8 +84,8 @@ export const useMemoActions = ({
           throw new Error(errorData.message || "メモ更新に失敗しました。");
         }
 
-        await loadMemos();
-        setEditingMemoId(null);
+        await loadMemos(); // 更新後にメモ一覧を再読み込み
+        setEditingMemoId(null); // 編集中IDをクリア
         toast.success("メモを更新しました！");
       } catch (err) {
         console.error("メモ更新エラー:", err);
@@ -96,7 +98,7 @@ export const useMemoActions = ({
     [token, loadMemos, setLoading, setError, setEditingMemoId]
   );
 
-  // 🔸 Deleting memos (moving to trash)
+  // 🔸 メモ削除処理（ゴミ箱へ移動）
   const handleDelete = useCallback(
     async (id) => {
       if (!token) {
@@ -116,7 +118,7 @@ export const useMemoActions = ({
           throw new Error(errorData.message || "メモ削除に失敗しました。");
         }
 
-        await loadMemos();
+        await loadMemos(); // 削除後にメモ一覧を再読み込み
         toast.success("メモをゴミ箱に移動しました。");
       } catch (err) {
         console.error("メモ削除エラー:", err);
@@ -129,7 +131,7 @@ export const useMemoActions = ({
     [token, loadMemos, setLoading, setError]
   );
 
-  // 🔸 Switching the completion state (flipping isDone true/false)
+  // 🔸 完了状態切替処理（isDone true/false）
   const handleToggleDone = useCallback(
     async (memo) => {
       if (!token) {
@@ -145,14 +147,14 @@ export const useMemoActions = ({
         const response = await updateMemo(token, memo._id, {
           title: memo.title,
           content: memo.content,
-          isDone: !memo.isDone,
+          isDone: !memo.isDone, // 完了状態を反転
         });
 
         if (!response.ok) {
           throw new Error("完了状態の切り替えに失敗しました。");
         }
 
-        await loadMemos();
+        await loadMemos(); // 更新後にメモ一覧を再読み込み
       } catch (err) {
         console.error("完了切り替えエラー:", err);
         toast.error(err.message || "完了状態の更新中にエラーが発生しました。");
@@ -164,7 +166,7 @@ export const useMemoActions = ({
     [token, loadMemos, setLoading, setError]
   );
 
-  // 🔸 Pin state switching process (flipping true/false of isPinned)
+  // 🔸 ピン状態切替処理（isPinned true/false）
   const handleTogglePin = useCallback(
     async (memo) => {
       if (!token) {
@@ -176,14 +178,14 @@ export const useMemoActions = ({
 
       try {
         const response = await updateMemo(token, memo._id, {
-          isPinned: !memo.isPinned,
+          isPinned: !memo.isPinned, // ピン状態を反転
         });
 
         if (!response.ok) {
           throw new Error("ピン状態の更新に失敗しました。");
         }
 
-        await loadMemos();
+        await loadMemos(); // 更新後にメモ一覧を再読み込み
       } catch (err) {
         console.error("ピン切り替えエラー:", err);
         toast.error(err.message || "ピン状態の更新中にエラーが発生しました。");
@@ -194,7 +196,7 @@ export const useMemoActions = ({
     [token, loadMemos, setLoading]
   );
 
-  // 🔸 Returns a set of functions to be used externally
+  // 🔸 外部で使用するアクション関数をまとめて返す
   return {
     handleCreate,
     handleUpdate,

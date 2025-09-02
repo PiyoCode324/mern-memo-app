@@ -1,35 +1,39 @@
 // hooks/utils/sortMemos.js
 
 /**
- * Sorts memos by pin status, completion status, and creation date.
+ * メモ配列を並び替えるユーティリティ関数
  *
- * Sorting rules:
- * - Pinned memos come first
- * - Incomplete memos come before completed ones
- * - Newer memos come before older ones (or the reverse, based on order)
+ * ソートルールの優先順位:
+ * 1. ピン留めされたメモ (isPinned: true) が最優先で先頭に来る
+ * 2. 未完了のメモ (isDone: false) が完了済み (isDone: true) より先に来る
+ * 3. 作成日 createdAt の新しい順 or 古い順で並び替える
  *
- * @param {Array} memosToSort - The array of memos to sort
- * @param {string} order - Sorting order: "newest" or "oldest"
- * @returns {Array} Sorted array of memos
+ * @param {Array} memosToSort - 並び替え対象のメモ配列
+ * @param {string} order - 並び順 ("newest": 新しい順, "oldest": 古い順)
+ * @returns {Array} 並び替えられた新しいメモ配列
  */
 export const sortMemos = (memosToSort, order) => {
-  // Create a shallow copy to avoid mutating the original array
+  // 元の配列を直接変更しないようにスプレッド構文で浅いコピーを作成
   const sorted = [...memosToSort];
 
+  // 配列をカスタムルールに基づいてソート
   sorted.sort((a, b) => {
-    // Sort by pinned status (true comes before false)
+    // 1️⃣ ピン留め (isPinned: true) を優先
     if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
 
-    // Sort by completion status (incomplete comes before completed)
+    // 2️⃣ 完了状態 (isDone: false → true) を優先
     if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
 
-    // Sort by creation date
+    // 3️⃣ 作成日 (createdAt) を比較
     if (order === "newest")
+      // 新しい順（降順: 日付が大きい方が先）
       return new Date(b.createdAt) - new Date(a.createdAt);
+
     if (order === "oldest")
+      // 古い順（昇順: 日付が小さい方が先）
       return new Date(a.createdAt) - new Date(b.createdAt);
 
-    // If no sorting condition is met, keep the original order
+    // 上記条件に当てはまらなければ元の順序を維持
     return 0;
   });
 

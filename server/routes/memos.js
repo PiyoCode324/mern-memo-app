@@ -1,21 +1,26 @@
 // server/routes/memo.js
 const express = require("express");
-const verifyToken = require("../middleware/verifyToken"); // JWT認証ミドルウェアをインポート
+const verifyToken = require("../middleware/verifyToken"); // JWT認証を行うミドルウェア
 const Memo = require("../models/Memo"); // Memoモデルをインポート
 
 const router = express.Router();
 
-// GET /api/memos?page=1&limit=10 - メモ一覧を取得 (isDeletedがfalseのものを取得)
+// =======================================
+// GET /api/memos?page=1&limit=10
+// メモ一覧を取得（削除されていないもののみ）
+// =======================================
 router.get("/", verifyToken, async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1; // ページ番号（デフォルト1）
+  const limit = parseInt(req.query.limit) || 10; // 1ページあたり件数（デフォルト10）
 
   try {
+    // 認証済みユーザーのメモを検索（削除されていないもの）
     const memos = await Memo.find({ userId: req.user.userId, isDeleted: false })
-      .sort({ updatedAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+      .sort({ updatedAt: -1 }) // 更新日時の降順
+      .skip((page - 1) * limit) // ページング用スキップ
+      .limit(limit); // 最大件数制限
 
+    // 総件数を取得（ページング用）
     const total = await Memo.countDocuments({
       userId: req.user.userId,
       isDeleted: false,
@@ -28,13 +33,15 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// server/routes/memos.js 内の POST /api/memos ルートの部分
-
+// =======================================
+// POST /api/memos
+// メモ作成
+// =======================================
 router.post("/", verifyToken, async (req, res) => {
   try {
     const { title, content, category, attachments } = req.body;
 
-    // --- ここにデバッグログを追加 ---
+    // デバッグ用ログ（attachmentsが文字列として送られる場合の処理）
     console.log("------------------- DEBUG LOG START -------------------");
     console.log("Received attachments in server:", attachments);
     console.log("Type of received attachments (typeof):", typeof attachments);
@@ -42,38 +49,31 @@ router.post("/", verifyToken, async (req, res) => {
       "Is attachments an array (Array.isArray):",
       Array.isArray(attachments)
     );
+
     if (typeof attachments === "string") {
       console.log("Attachments is a string. Attempting JSON.parse()...");
       try {
-        const parsedAttachments = JSON.parse(attachments);
+        const parsedAttachments = JSON.parse(attachments); // JSON文字列を配列に変換
         console.log("Successfully parsed attachments:", parsedAttachments);
-        console.log(
-          "Type of parsed attachments (typeof):",
-          typeof parsedAttachments
-        );
-        console.log(
-          "Is parsed attachments an array (Array.isArray):",
-          Array.isArray(parsedAttachments)
-        );
-        // もしここで正しくパースされるなら、req.body.attachments を上書きする
-        req.body.attachments = parsedAttachments;
+        req.body.attachments = parsedAttachments; // 上書き
       } catch (parseError) {
         console.error("Failed to parse attachments string:", parseError);
       }
     }
     console.log("------------------- DEBUG LOG END ---------------------");
-    // ----------------------------
 
+    // バリデーション：タイトル・内容は必須
     if (!title || !content) {
       return res.status(400).json({ message: "タイトルと内容は必須です。" });
     }
 
+    // 新しいメモを作成
     const newMemo = new Memo({
-      userId: req.user.userId,
+      userId: req.user.userId, // JWTから取得したユーザーID
       title,
       content,
       category: category || "",
-      attachments: attachments || [], // この行は、上記のデバッグログでattachmentsがparsedAttachmentsに置き換えられている場合は、その新しい値を使う
+      attachments: attachments || [], // 添付ファイル（空配列可）
     });
 
     await newMemo.save();
@@ -86,13 +86,10 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// =====================================================================
-// IMPORTANT: ルーティングの順序を修正しました
-// より具体的なパス (例: /trash) は、動的なIDを持つパス (例: /:id) よりも前に定義する必要があります。
-// =====================================================================
-
-// GET /api/memos/trash - ゴミ箱のメモ一覧を取得 (認証が必要)
-// このルートは /api/memos/:id よりも前に定義されています
+// =======================================
+// GET /api/memos/trash
+// ゴミ箱にあるメモ一覧を取得
+// =======================================
 router.get("/trash", verifyToken, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -100,7 +97,7 @@ router.get("/trash", verifyToken, async (req, res) => {
   try {
     const trashedMemos = await Memo.find({
       userId: req.user.userId,
-      isDeleted: true, // isDeletedがtrueのメモのみを取得
+      isDeleted: true, // 論理削除済みのメモのみ
     })
       .sort({ updatedAt: -1 })
       .skip((page - 1) * limit)
@@ -118,13 +115,15 @@ router.get("/trash", verifyToken, async (req, res) => {
   }
 });
 
-// DELETE /api/memos/trash - ゴミ箱を空にする (isDeletedがtrueのメモをすべて物理削除)
-// このルートも /api/memos/:id よりも前に定義されています
+// =======================================
+// DELETE /api/memos/trash
+// ゴミ箱を空にする（完全削除）
+// =======================================
 router.delete("/trash", verifyToken, async (req, res) => {
   try {
     const result = await Memo.deleteMany({
       userId: req.user.userId,
-      isDeleted: true, // isDeletedがtrueのメモのみを削除
+      isDeleted: true, // ゴミ箱の中身のみ
     });
 
     res.json({
@@ -136,8 +135,10 @@ router.delete("/trash", verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/memos/:id - 特定のメモを取得 (認証が必要)
-// このルートは /trash よりも後に定義されています
+// =======================================
+// GET /api/memos/:id
+// 特定のメモを取得
+// =======================================
 router.get("/:id", verifyToken, async (req, res) => {
   try {
     const memo = await Memo.findOne({
@@ -160,12 +161,15 @@ router.get("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// PUT /api/memos/:id - 特定のメモを編集 (認証が必要)
+// =======================================
+// PUT /api/memos/:id
+// 特定のメモを更新
+// =======================================
 router.put("/:id", verifyToken, async (req, res) => {
   try {
     const { title, content, category, isDone, isPinned } = req.body;
 
-    // 更新するフィールドだけをまとめる
+    // 更新対象のフィールドだけを抽出
     const updateFields = {};
     if (title !== undefined) updateFields.title = title;
     if (content !== undefined) updateFields.content = content;
@@ -173,16 +177,18 @@ router.put("/:id", verifyToken, async (req, res) => {
     if (isDone !== undefined) updateFields.isDone = isDone;
     if (isPinned !== undefined) updateFields.isPinned = isPinned;
 
+    // 何も更新項目がなければエラー
     if (Object.keys(updateFields).length === 0) {
       return res
         .status(400)
         .json({ message: "更新内容が指定されていません。" });
     }
 
+    // 該当メモを更新
     const updatedMemo = await Memo.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
       updateFields,
-      { new: true }
+      { new: true } // 更新後のデータを返す
     );
 
     if (!updatedMemo) {
@@ -200,61 +206,23 @@ router.put("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// // PUT /api/memos/:id - 特定のメモを編集 (認証が必要)
-// router.put("/:id", verifyToken, async (req, res) => {
-//   try {
-//     const { title, content, category, isDone, isPinned } = req.body; // categoryを追加
-
-//     const updatedMemo = await Memo.findOneAndUpdate(
-//       { _id: req.params.id, userId: req.user.userId },
-//       { title, content, category, isDone, isPinned }, // isPinnedも含むように更新
-//       { new: true }
-//     );
-
-//     // バリデーション
-//     if (
-//       title === undefined &&
-//       content === undefined &&
-//       category === undefined &&
-//       isDone === undefined &&
-//       isPinned === undefined
-//     ) {
-//       return res.status(400).json({
-//         message: "更新内容が指定されていません。",
-//       });
-//     }
-
-//     if (!updatedMemo) {
-//       return res.status(404).json({
-//         message: "メモが見つかりません、または更新する権限がありません。",
-//       });
-//     }
-
-//     res.json(updatedMemo);
-//   } catch (err) {
-//     console.error("メモ更新エラー:", err);
-//     res
-//       .status(500)
-//       .json({ message: "メモの更新中にサーバーエラーが発生しました。" });
-//   }
-// });
-
-// DELETE /api/memos/:id - 特定のメモを削除 (ゴミ箱へ移動、認証が必要)
+// =======================================
+// DELETE /api/memos/:id
+// 特定のメモをゴミ箱に移動（論理削除）
+// =======================================
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
-    // ユーザーIDとメモIDが一致するメモを検索し、isDeletedをtrueに設定（論理削除）
     const deletedMemo = await Memo.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
-      { isDeleted: true }, // ここでisDeletedをtrueに設定
+      { isDeleted: true }, // 論理削除
       { new: true }
     );
     if (!deletedMemo) {
-      // メモが見つからないか、ユーザーが所有していない場合
       return res.status(404).json({
         message: "メモが見つかりません、または削除する権限がありません。",
       });
     }
-    res.json({ message: "メモをゴミ箱に移動しました。" }); // メッセージを明確に
+    res.json({ message: "メモをゴミ箱に移動しました。" });
   } catch (err) {
     console.error("メモ削除エラー:", err);
     res
@@ -263,12 +231,15 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// PUT /api/memos/:id/restore - ゴミ箱からメモを復元 (認証が必要)
+// =======================================
+// PUT /api/memos/:id/restore
+// ゴミ箱からメモを復元
+// =======================================
 router.put("/:id/restore", verifyToken, async (req, res) => {
   try {
     const restoredMemo = await Memo.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
-      { isDeleted: false }, // isDeletedをfalseに戻す
+      { isDeleted: false }, // ゴミ箱から復元
       { new: true }
     );
 

@@ -1,3 +1,4 @@
+// src/hooks/useFilteredMemos.js
 import { useMemo } from "react";
 import { sortMemos } from "./utils/sortMemos";
 
@@ -7,29 +8,29 @@ export const useFilteredMemos = (
   filterCategory,
   sortOrder
 ) => {
-  // Step 1: Filter memos based on search keyword and selected category
+  // ステップ1: 検索キーワードとカテゴリでメモをフィルタリング
   const filteredMemos = useMemo(() => {
     return memos.filter((memo) => {
-      // Check if the title or content includes the search keyword (case-insensitive)
+      // タイトルまたは本文に検索キーワードが含まれているか（大文字小文字を無視）
       const matchesSearch =
         memo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         memo.content.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Check if the category matches (if a filter is applied)
+      // カテゴリが一致するか（フィルタが設定されている場合のみチェック）
       const matchesCategory = filterCategory
         ? memo.category === filterCategory
         : true;
 
-      // Return memos that match both the search query and the selected category
+      // 検索条件とカテゴリ条件を両方満たすメモのみを返す
       return matchesSearch && matchesCategory;
     });
   }, [memos, searchQuery, filterCategory]);
 
-  // Step 2: Sort the filtered memos based on the selected order
+  // ステップ2: フィルタ済みメモを選択された順序で並び替え
   const sortedAndFilteredMemos = useMemo(() => {
     return sortMemos(filteredMemos, sortOrder);
   }, [filteredMemos, sortOrder]);
 
-  // Return both filtered and sorted memos
+  // フィルタ済みメモとフィルタ+ソート済みメモの両方を返す
   return { filteredMemos, sortedAndFilteredMemos };
 };
